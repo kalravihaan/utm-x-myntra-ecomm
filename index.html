@@ -2621,7 +2621,13 @@ document.getElementById('modeOneTime').addEventListener('click', () => {
   document.getElementById('topStatus').textContent='Drop your files to get started';
 });
 document.getElementById('modeDatabase').addEventListener('click', () => {
-  loadFromGitHub();
+  if(DB.loaded || DB._loading) return;
+  DB._loading = true;
+  document.getElementById('modeScreen').style.display='none';
+  document.getElementById('dbScreen').style.display='block';
+  document.getElementById('backToModeBtn').style.display='';
+  document.getElementById('topStatus').textContent='Loading from GitHub…';
+  loadFromGitHub().finally(()=>{ DB._loading=false; });
 });
 document.getElementById('backToModeBtn').addEventListener('click', () => {
   document.getElementById('modeScreen').style.display='block';
