@@ -514,10 +514,10 @@ tbody td{padding:8px 12px;font-size:12px;vertical-align:middle;}
         <div class="mode-card-badge">Session only</div>
       </div>
       <div class="mode-card database" id="modeDatabase">
-        <div class="mode-icon">📁</div>
-        <div class="mode-card-title">GitHub Data</div>
-        <div class="mode-card-desc">Load all data files from the connected GitHub repo. Drop your CSVs in the data/ folder, push, and the dashboard builds itself.</div>
-        <div class="mode-card-badge">GitHub powered</div>
+        <div class="mode-icon">🗄️</div>
+        <div class="mode-card-title">Database Mode</div>
+        <div class="mode-card-desc">Build a persistent database by financial year. View trends, compare FY26 vs FY27, and track monthly performance over time.</div>
+        <div class="mode-card-badge">Firebase powered</div>
       </div>
     </div>
   </div>
@@ -732,12 +732,106 @@ tbody td{padding:8px 12px;font-size:12px;vertical-align:middle;}
   </div>
 </div>
 
-<!-- GITHUB LOAD SCREEN -->
-<div id="ghLoadScreen" style="display:none;min-height:calc(100vh - 51px);flex-direction:column;align-items:center;justify-content:center;gap:16px;">
-  <div style="font-size:40px;line-height:1;">📁</div>
-  <div style="font-family:'Playfair Display',serif;font-size:22px;color:#111;">Loading from GitHub</div>
-  <div style="font-size:12px;color:#888;">Fetching CSV files from the data/ folder…</div>
-  <div id="ghLoadErr" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;border-radius:8px;padding:12px 16px;max-width:440px;font-size:12px;color:#7f1d1d;line-height:1.6;"></div>
+<!-- DATABASE SCREEN -->
+<div id="dbScreen">
+  <!-- Sticky header wrapper (replaces individual sticky on each child) -->
+  <div id="dbStickyHeader">
+    <!-- FY tabs bar -->
+    <div class="db-fy-bar" id="dbFyBar">
+      <div id="dbFyTabs" style="display:flex;gap:0;"></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto;padding-right:16px;">
+        
+      </div>
+    </div>
+    <!-- Month timeline -->
+    <div class="month-timeline" id="monthTimeline" style="display:none;"></div>
+    <!-- DB content tabs -->
+    <div class="db-tabs" id="dbTabBar" style="display:none;">
+      <button class="db-tab active" data-dbtab="db-overview">Overview</button>
+      <button class="db-tab" data-dbtab="db-styles">Style Table</button>
+    </div>
+    <!-- DB FILTER BAR -->
+    <div class="filter-bar" id="dbFilterBar" style="display:none;">
+    <span class="filter-label">Brand</span>
+    <div id="dbBrandPills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Tier</span>
+    <div class="tier-filter-wrap" id="dbTierPills"></div>
+    <div style="position:relative;margin-left:4px;">
+      <button style="background:none;border:none;cursor:pointer;font-size:10px;color:#aaa;padding:2px 4px;" id="dbTierInfoBtn">ⓘ</button>
+      <div id="dbTierInfoBox" style="display:none;position:absolute;top:24px;right:0;left:auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;z-index:999;width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.1);font-size:11px;">
+        <div id="dbTierInfoView">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+            <div style="font-weight:700;color:#111;">Tier Classification</div>
+            <button class="tier-info-edit-btn" id="dbTierInfoEditBtn">Edit</button>
+          </div>
+          <div style="color:#5b21b6;margin-bottom:3px;">VF — ROS ≥ <span id="db-li-VF">1.5</span>/day</div>
+          <div style="color:#065f46;margin-bottom:3px;">F &nbsp;— ROS ≥ <span id="db-li-F">0.7</span>/day</div>
+          <div style="color:#1e40af;margin-bottom:3px;">M — ROS ≥ <span id="db-li-M">0.3</span>/day</div>
+          <div style="color:#92400e;margin-bottom:3px;">S &nbsp;— ROS > 0/day</div>
+          <div style="color:#991b1b;">D &nbsp;— ROS = 0 (no sales)</div>
+        </div>
+        <div id="dbTierInfoEdit" style="display:none;">
+          <div style="font-weight:700;color:#111;margin-bottom:8px;">Edit Thresholds</div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:8px;">Saved to cloud — applies on all devices</div>
+          <div class="tier-edit-row"><label style="color:#5b21b6;">VF (Very Fast)</label><span style="color:#aaa;">≥</span><input type="number" id="db-ti-VF" step="0.1" min="0.01"></div>
+          <div class="tier-edit-row"><label style="color:#065f46;">F (Fast)</label><span style="color:#aaa;">≥</span><input type="number" id="db-ti-F" step="0.1" min="0.01"></div>
+          <div class="tier-edit-row"><label style="color:#1e40af;">M (Medium)</label><span style="color:#aaa;">≥</span><input type="number" id="db-ti-M" step="0.01" min="0.001"></div>
+          <div style="font-size:10px;color:#aaa;margin:2px 0 8px;">S = any ROS > 0 · D = ROS of 0</div>
+          <div id="dbTierInfoEditErr" style="font-size:10px;color:#dc2626;display:none;margin-bottom:6px;white-space:normal;"></div>
+          <div style="display:flex;gap:6px;">
+            <button class="tier-info-cancel-btn" id="dbTierInfoCancelBtn">Cancel</button>
+            <button class="tier-info-save-btn" id="dbTierInfoSaveBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="sort-group">
+      <span class="filter-label">Sort</span>
+      <select class="sort-select" id="dbSortSelect">
+        <option value="units_desc">Units ↓</option>
+        <option value="units_asc">Units ↑</option>
+        <option value="revenue_desc">Revenue ↓</option>
+        <option value="revenue_asc">Revenue ↑</option>
+        <option value="ros_desc">ROS ↓</option>
+        <option value="ros_asc">ROS ↑</option>
+        <option value="returns_desc">Returns ↓</option>
+        <option value="retpct_desc">Return% ↓</option>
+        <option value="cost_desc">Total Cost ↓</option>
+      </select>
+    </div>
+    </div><!-- end #dbFilterBar -->
+  </div><!-- end #dbStickyHeader -->
+  <!-- Scrollable content area -->
+  <div id="dbContentArea">
+    <!-- DB tab panels -->
+    <div class="db-tab-panel active" id="db-overview"></div>
+    <div class="db-tab-panel" id="db-styles">
+      <div class="search-wrap" style="padding:12px 28px 0;">
+        <input class="search-input" id="dbSearchInput" type="text" placeholder="Search style ID, SKU code, article type…">
+      </div>
+      <div style="padding:6px 28px 0;display:flex;align-items:center;gap:12px;">
+        <div class="row-count" id="dbRowCount"></div>
+      </div>
+      <div class="table-wrap">
+        <div class="tw"><table id="dbMainTable"><thead id="dbTableHead"></thead><tbody id="dbTableBody"></tbody></table></div>
+      </div>
+    </div>
+    <div class="db-tab-panel" id="db-manage"></div>
+    <!-- Compare panel (separate from tabs) -->
+    <div id="db-compare" style="display:none;"></div>
+    <!-- Loading / empty states -->
+    <div class="db-loading" id="dbLoading">
+      <div class="db-spinner"></div>
+      <div style="font-size:12px;color:#888;" id="dbLoadStatus">Connecting to database…</div>
+    </div>
+    <div class="db-empty-state" id="dbEmptyState" style="display:none;">
+      <div class="db-empty-icon">📭</div>
+      <div class="db-empty-title">No data yet</div>
+      <div class="db-empty-sub">Click <b>+ Add Data</b> to upload your first month of sales data and start building your database.</div>
+    </div>
+  </div><!-- end #dbContentArea -->
 </div>
 
 <!-- SKU MODAL -->
@@ -832,8 +926,35 @@ tbody td{padding:8px 12px;font-size:12px;vertical-align:middle;}
   </div>
 </div>
 
+    <div class="pw-sub" id="pwSub">Enter the dashboard password to save changes to the database.</div>
+    <input class="pw-input" type="password" id="pwInput" placeholder="Password">
+    <div class="pw-err" id="pwErr">Incorrect password. Try again.</div>
+    <div class="pw-btns">
+      <button class="pw-cancel" id="pwCancel">Cancel</button>
+      <button class="pw-confirm" id="pwConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+      <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    </div>
+    <div class="confirm-body">
+      <div class="confirm-step-dots" id="confirmDots"></div>
+      <div class="confirm-text" id="confirmText"></div>
+      <div class="confirm-input-wrap" id="confirmInputWrap" style="display:none;">
+        <label class="confirm-input-label" id="confirmInputLabel"></label>
+        <input class="confirm-input" type="text" id="confirmInput" placeholder="">
+      </div>
+      <div class="confirm-btns">
+        <button class="confirm-cancel-btn" id="confirmCancelBtn">Cancel</button>
+        <button class="confirm-next-btn" id="confirmNextBtn">Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
+
 // ─── SHARED UTILS ────────────────────────────────────────
 function getFY(yyyyMM) {
   const [y, m] = yyyyMM.split('-').map(Number);
@@ -1566,9 +1687,10 @@ function showSizeRetReasons(size, artStyleIds){
 }
 
 // ─── SKU MODAL ───────────────────────────────────────────
-function showSkuModal(sid) {
-  const isDB = false;
-  const style = S.styles.find(s=>s.styleId===sid);
+function showSkuModal(sid, dbSkus) {
+  // dbSkus: optional array for DB mode (pre-built). If absent, use one-time S state.
+  const isDB = !!dbSkus;
+  const style = isDB ? DB.dbStyles.find(s=>s.styleId===sid) : S.styles.find(s=>s.styleId===sid);
   if(!style) return;
   document.getElementById('smSid').textContent=`Style ID: ${sid}`;
   document.getElementById('smName').textContent=style.styleName||sid;
@@ -1685,53 +1807,784 @@ function showDashboard() {
   renderOverview('onetimeview'); renderTable();
 }
 
+// ─── DATABASE STATE ──────────────────────────────────────
+const DB = {
+  loaded: false,
+  salesMonths: {},    // 'YYYY-MM' → {month,fy,styles:{sid:{brand,styleName,articleType,firstSku,units,revenue}},totalUnits,totalRevenue,uploadedAt}
+  returnsMonths: {},  // 'YYYY-MM' → {month,fy,styles:{sid:rets},totalRets,uploadedAt}
+  costMaster: {costs:{},uploadedAt:null},
+  listingsMaster: {listings:{},uploadedAt:null},
+  activeFY: null,
+  compareMode: false,
+  compareSubMode: 'fy',
+  compareFYA: null,
+  compareFYB: null,
+  compareMthA: null,
+  compareMthB: null,
+  manageChannel: '18724',
+  manageSubTab: 'sales',
+  selectedMonths: new Set(), // months selected in timeline
+  allFYs: [],
+  fyMonths: {},       // 'FY27' → ['2026-04','2026-05',...]
+  dbActiveBrands: new Set(['All']),
+  dbActiveTiers: new Set(['VF','F','M','S','D']),
+  dbSortKey: 'units_desc',
+  dbStyles: [],       // aggregated style array for current DB view
+};
+
 // ─── GITHUB DATA LOADING ─────────────────────────────────
 async function loadFromGitHub() {
-  document.getElementById('modeScreen').style.display='none';
-  document.getElementById('ghLoadScreen').style.display='flex';
-  document.getElementById('backToModeBtn').style.display='';
-  document.getElementById('topStatus').textContent='Loading from GitHub…';
-  const errEl=document.getElementById('ghLoadErr');
-  errEl.style.display='none';
+  document.getElementById('dbLoading').style.display='flex';
+  document.getElementById('dbEmptyState').style.display='none';
+  document.getElementById('dbFyBar').style.display='none';
+  document.getElementById('monthTimeline').style.display='none';
+  document.getElementById('dbTabBar').style.display='none';
+  ['db-overview','db-styles','db-compare'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.display='none';el.classList.remove('active');}});
+  document.getElementById('dbFilterBar').style.display='none';
   try {
-    // Auto-detect GitHub username and repo from the Pages URL
-    // GitHub Pages URLs: https://username.github.io/reponame/...
-    const m=location.hostname.match(/^([^.]+)\.github\.io$/);
-    if(!m) throw new Error('This only works when hosted on GitHub Pages (username.github.io/repo).');
-    const user=m[1];
-    const repo=location.pathname.split('/').filter(Boolean)[0];
+    const hm=location.hostname.match(/^([^.]+)\.github\.io$/);
+    if(!hm) throw new Error('Only works on GitHub Pages (username.github.io/repo).');
+    const user=hm[1], repo=location.pathname.split('/').filter(Boolean)[0];
     if(!repo) throw new Error('Could not detect repo name from URL.');
-
-    // List all files in the data/ folder via GitHub Contents API (no auth needed for public repos)
-    const apiUrl=`https://api.github.com/repos/${user}/${repo}/contents/data`;
-    const listing=await fetch(apiUrl).then(r=>{
+    document.getElementById('dbLoadStatus').textContent='Listing files in data/ folder…';
+    const listing=await fetch(`https://api.github.com/repos/${user}/${repo}/contents/data`).then(r=>{
       if(!r.ok) throw new Error(`GitHub API error ${r.status} — is the repo public and does a data/ folder exist?`);
       return r.json();
     });
     const csvFiles=listing.filter(f=>f.type==='file'&&f.name.toLowerCase().endsWith('.csv'));
     if(!csvFiles.length) throw new Error('No CSV files found in the data/ folder.');
-
-    const fetched=[];
-    for(const file of csvFiles){
+    document.getElementById('dbLoadStatus').textContent=`Downloading ${csvFiles.length} file${csvFiles.length!==1?'s':''}…`;
+    const fetched=await Promise.all(csvFiles.map(async file=>{
       const text=await fetch(file.download_url).then(r=>r.text());
       const parsed=Papa.parse(text,{header:true,skipEmptyLines:true});
       const type=detectType(parsed.meta.fields||[]);
-      fetched.push({name:file.name,type,rows:parsed.data,rowCount:parsed.data.length});
-    }
-    S.data.sales=fetched.filter(f=>f.type==='sales').flatMap(f=>f.rows);
-    S.data.returns=fetched.filter(f=>f.type==='returns').flatMap(f=>f.rows);
-    S.data.inventory=fetched.filter(f=>f.type==='inventory').flatMap(f=>f.rows);
-    S.data.itemmaster=fetched.filter(f=>f.type==='itemmaster').flatMap(f=>f.rows);
-    S.data.catalogue=fetched.filter(f=>f.type==='catalogue').flatMap(f=>f.rows);
-    S.files=fetched;
-    document.getElementById('ghLoadScreen').style.display='none';
-    processData(); showDashboard();
-  } catch(e) {
-    errEl.textContent='Failed to load: '+e.message;
-    errEl.style.display='block';
+      return {name:file.name,type,rows:parsed.data};
+    }));
+    document.getElementById('dbLoadStatus').textContent='Processing data…';
+    DB.salesMonths={}; DB.returnsMonths={};
+    DB.costMaster={costs:{},uploadedAt:null};
+    DB.listingsMaster={listings:{},vanToSku:{},uploadedAt:null};
+    // Listings first (needed for VAN mapping)
+    fetched.filter(f=>f.type==='catalogue').forEach(f=>{
+      f.rows.forEach(r=>{
+        const sid=String(r['style id']||'').trim();
+        const cd=findRowVal(r,'style catalogued date','catalogued date','catalogue date','catalog date','listing date','listed date','go live date');
+        if(sid&&cd) DB.listingsMaster.listings[sid]=String(cd).trim();
+        const van=findRowVal(r,'vendor article number','vendor_article_number','van');
+        const sku=findRowVal(r,'seller sku code','seller_sku_code','sku code','sku_code');
+        if(van&&sku){const v=String(van).trim(),s=String(sku).trim();if(v&&s)DB.listingsMaster.vanToSku[v]=s;}
+      });
+    });
+    // Cost master
+    fetched.filter(f=>f.type==='itemmaster').forEach(f=>{
+      f.rows.forEach(r=>{
+        const ean=findRowVal(r,'ean');
+        const cp=findRowVal(r,'cost price','cost_price','costprice','unit cost','cost');
+        if(!ean||cp===null||cp===undefined||cp==='') return;
+        const sid=String(ean).trim(), cost=parseFloat(String(cp).replace(/[₹,\s]/g,''));
+        if(sid&&!isNaN(cost)&&cost>0) DB.costMaster.costs[sid]=cost;
+      });
+    });
+    // Sales — group by month, build style maps
+    const vanToSku=DB.listingsMaster.vanToSku||{};
+    fetched.filter(f=>f.type==='sales').forEach(f=>{
+      const sellerId=getSellerFromRows(f.rows)||'18724';
+      const isSJIT=sellerId==='30377';
+      const byMonth={};
+      f.rows.forEach(r=>{
+        const d=(r['created on']||'').trim().split(' ')[0];
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+        const month=d.slice(0,7);
+        if(!byMonth[month]) byMonth[month]=[];
+        byMonth[month].push(r);
+      });
+      Object.entries(byMonth).forEach(([month,rows])=>{
+        const newStyleMap={};
+        rows.forEach(r=>{
+          const sid=String(r['style id']||'').trim(); if(!sid) return;
+          let sku;
+          if(isSJIT){const van=findRowVal(r,'vendor article number','vendor_article_number','van');sku=van?(vanToSku[String(van).trim()]||''):'';} else {sku=(r['seller sku code']||'').trim();}
+          const price=parseFloat(r['seller price'])||0;
+          if(!newStyleMap[sid]) newStyleMap[sid]={brand:(r['brand']||'').trim(),styleName:(r['style name']||'').trim(),articleType:(r['article type']||'').trim(),firstSku:sku,units:0,revenue:0,skus:{}};
+          newStyleMap[sid].units++; newStyleMap[sid].revenue+=price;
+          if(sku){if(!newStyleMap[sid].skus[sku]) newStyleMap[sid].skus[sku]={units:0,revenue:0}; newStyleMap[sid].skus[sku].units++; newStyleMap[sid].skus[sku].revenue+=price;}
+        });
+        const existing=DB.salesMonths[month];
+        let finalStyleMap, sellers, sellerStyles;
+        if(existing){
+          finalStyleMap=JSON.parse(JSON.stringify(existing.styles));
+          Object.entries(newStyleMap).forEach(([sid,nd])=>{
+            if(finalStyleMap[sid]){finalStyleMap[sid].units+=nd.units;finalStyleMap[sid].revenue+=nd.revenue;if(!finalStyleMap[sid].skus)finalStyleMap[sid].skus={};Object.entries(nd.skus||{}).forEach(([sku,sd])=>{if(finalStyleMap[sid].skus[sku]){finalStyleMap[sid].skus[sku].units+=sd.units;finalStyleMap[sid].skus[sku].revenue+=sd.revenue;}else finalStyleMap[sid].skus[sku]={...sd};});}
+            else finalStyleMap[sid]={...nd};
+          });
+          sellers=[...new Set([...(existing.sellers||[]),sellerId])];
+          sellerStyles={...(existing.sellerStyles||{}),[sellerId]:newStyleMap};
+        } else {
+          finalStyleMap=newStyleMap; sellers=[sellerId]; sellerStyles={[sellerId]:newStyleMap};
+        }
+        const totalUnits=Object.values(finalStyleMap).reduce((a,s)=>a+s.units,0);
+        const totalRevenue=Object.values(finalStyleMap).reduce((a,s)=>a+s.revenue,0);
+        DB.salesMonths[month]={month,fy:getFY(month),styles:finalStyleMap,sellerStyles,totalUnits,totalRevenue,sellers,uploadedAt:null};
+      });
+    });
+    // Returns — group by month
+    const mergeReasons=(base,incoming)=>{const out=JSON.parse(JSON.stringify(base||{}));Object.entries(incoming||{}).forEach(([k,reasons])=>{if(!out[k])out[k]={};Object.entries(reasons).forEach(([r,c])=>{out[k][r]=(out[k][r]||0)+c;});});return out;};
+    fetched.filter(f=>f.type==='returns').forEach(f=>{
+      const sellerId=getSellerFromRows(f.rows)||'18724';
+      const byMonth={},byMonthSkuRets={},byMonthRBS={},byMonthRBSku={};
+      f.rows.forEach(r=>{
+        const sid=String(r['style_id']||'').trim(); if(!sid) return;
+        const skuCode=(r['seller_sku_code']||r['sku_code']||r['seller sku code']||'').trim();
+        const d=findRowVal(r,'order_created_date','order created date');
+        if(!d) return;
+        const ds=String(d).trim().split(' ')[0];
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(ds)) return;
+        const month=ds.slice(0,7);
+        const reason=(String(r['return_reason']||r['Return Reason']||r['returnReason']||'').trim())||'RTO';
+        if(!byMonth[month]) byMonth[month]={};
+        byMonth[month][sid]=(byMonth[month][sid]||0)+1;
+        if(!byMonthRBS[month]) byMonthRBS[month]={};
+        if(!byMonthRBS[month][sid]) byMonthRBS[month][sid]={};
+        byMonthRBS[month][sid][reason]=(byMonthRBS[month][sid][reason]||0)+1;
+        if(skuCode){
+          if(!byMonthSkuRets[month]) byMonthSkuRets[month]={};
+          byMonthSkuRets[month][skuCode]=(byMonthSkuRets[month][skuCode]||0)+1;
+          if(!byMonthRBSku[month]) byMonthRBSku[month]={};
+          if(!byMonthRBSku[month][skuCode]) byMonthRBSku[month][skuCode]={};
+          byMonthRBSku[month][skuCode][reason]=(byMonthRBSku[month][skuCode][reason]||0)+1;
+        }
+      });
+      Object.entries(byMonth).forEach(([month,styles])=>{
+        const existing=DB.returnsMonths[month];
+        const newSkuRets=byMonthSkuRets[month]||{}, newRBS=byMonthRBS[month]||{}, newRBSku=byMonthRBSku[month]||{};
+        let finalStyles, finalSkuRets, finalRBS, finalRBSku, sellerReturns;
+        if(existing){
+          finalStyles={...existing.styles}; Object.entries(styles).forEach(([sid,c])=>{finalStyles[sid]=(finalStyles[sid]||0)+c;});
+          finalSkuRets={...(existing.skuRets||{})}; Object.entries(newSkuRets).forEach(([sku,c])=>{finalSkuRets[sku]=(finalSkuRets[sku]||0)+c;});
+          finalRBS=mergeReasons(existing.retReasonsByStyle,newRBS); finalRBSku=mergeReasons(existing.retReasonsBySku,newRBSku);
+          const prevSR=existing.sellerReturns||{}, prevSlice=prevSR[sellerId]||{styles:{},skuRets:{},retReasonsByStyle:{},retReasonsBySku:{}};
+          const accSS={...prevSlice.styles}; Object.entries(styles).forEach(([sid,c])=>{accSS[sid]=(accSS[sid]||0)+c;});
+          const accSR={...(prevSlice.skuRets||{})}; Object.entries(newSkuRets).forEach(([sku,c])=>{accSR[sku]=(accSR[sku]||0)+c;});
+          sellerReturns={...prevSR,[sellerId]:{styles:accSS,skuRets:accSR,retReasonsByStyle:mergeReasons(prevSlice.retReasonsByStyle,newRBS),retReasonsBySku:mergeReasons(prevSlice.retReasonsBySku,newRBSku)}};
+        } else {
+          finalStyles=styles; finalSkuRets=newSkuRets; finalRBS=newRBS; finalRBSku=newRBSku;
+          sellerReturns={[sellerId]:{styles,skuRets:newSkuRets,retReasonsByStyle:newRBS,retReasonsBySku:newRBSku}};
+        }
+        DB.returnsMonths[month]={month,fy:getFY(month),styles:finalStyles,skuRets:finalSkuRets,retReasonsByStyle:finalRBS,retReasonsBySku:finalRBSku,sellerReturns,totalRets:Object.values(finalStyles).reduce((a,b)=>a+b,0),sellers:[sellerId],uploadedAt:null};
+      });
+    });
+    DB.loaded=true;
+    buildDBFYIndex();
+    renderDBScreen();
+  } catch(err) {
+    document.getElementById('dbLoadStatus').textContent='Error: '+err.message;
+    console.error(err);
   }
 }
-// ─── FILE HANDLING (one-time) ─────────────────────────────────────────────
+
+// ─── DB FY INDEX ─────────────────────────────────────────
+function buildDBFYIndex() {
+  const fySet = new Set();
+  Object.keys(DB.salesMonths).forEach(m => fySet.add(getFY(m)));
+  Object.keys(DB.returnsMonths).forEach(m => fySet.add(getFY(m)));
+  DB.allFYs = [...fySet].sort();
+  DB.fyMonths = {};
+  DB.allFYs.forEach(fy => {
+    DB.fyMonths[fy] = Object.keys(DB.salesMonths).filter(m => getFY(m) === fy).sort();
+  });
+  if (!DB.activeFY && DB.allFYs.length) DB.activeFY = DB.allFYs[DB.allFYs.length - 1];
+}
+
+// ─── AGGREGATE DB STYLES ─────────────────────────────────
+function aggregateDBStyles(months) {
+  const styleMap = {};
+  let totalDays = 0;
+  months.forEach(month => {
+    totalDays += getDaysInMonth(month);
+    const md = DB.salesMonths[month]; if (!md) return;
+    Object.entries(md.styles || {}).forEach(([sid, sd]) => {
+      if (!styleMap[sid]) styleMap[sid] = {styleId:sid, brand:sd.brand||'', styleName:sd.styleName||'', articleType:sd.articleType||'', firstSku:sd.firstSku||'', units:0, revenue:0, rets:0, skus:{}};
+      styleMap[sid].units += sd.units || 0;
+      styleMap[sid].revenue += sd.revenue || 0;
+      // Aggregate per-SKU sales (only present in newly-uploaded months)
+      Object.entries(sd.skus||{}).forEach(([sku, skuData]) => {
+        if (!styleMap[sid].skus[sku]) styleMap[sid].skus[sku] = {sellerSkuCode:sku, units:0, revenue:0, rets:0};
+        styleMap[sid].skus[sku].units += skuData.units||0;
+        styleMap[sid].skus[sku].revenue += skuData.revenue||0;
+      });
+    });
+  });
+  // Build sku→styleId reverse map for return attribution
+  const skuToStyle = {};
+  Object.entries(styleMap).forEach(([sid, st]) => {
+    Object.keys(st.skus).forEach(sku => { skuToStyle[sku] = sid; });
+  });
+  const retReasonsByStyle={}, retReasonsBySku={};
+  months.forEach(month => {
+    const rd = DB.returnsMonths[month]; if (!rd) return;
+    Object.entries(rd.styles || {}).forEach(([sid, rets]) => {
+      if (styleMap[sid]) styleMap[sid].rets += typeof rets === 'number' ? rets : 0;
+    });
+    // Per-SKU returns attribution
+    Object.entries(rd.skuRets||{}).forEach(([sku, rets]) => {
+      const sid = skuToStyle[sku]; if (!sid || !styleMap[sid]?.skus[sku]) return;
+      styleMap[sid].skus[sku].rets += rets;
+    });
+    // Merge reason maps
+    Object.entries(rd.retReasonsByStyle||{}).forEach(([sid,reasons])=>{
+      if(!retReasonsByStyle[sid]) retReasonsByStyle[sid]={};
+      Object.entries(reasons).forEach(([r,c])=>{ retReasonsByStyle[sid][r]=(retReasonsByStyle[sid][r]||0)+c; });
+    });
+    Object.entries(rd.retReasonsBySku||{}).forEach(([sku,reasons])=>{
+      if(!retReasonsBySku[sku]) retReasonsBySku[sku]={};
+      Object.entries(reasons).forEach(([r,c])=>{ retReasonsBySku[sku][r]=(retReasonsBySku[sku][r]||0)+c; });
+    });
+  });
+  const costs = DB.costMaster.costs || {};
+  const listings = DB.listingsMaster.listings || {};
+  const styles = Object.values(styleMap).map(st => {
+    const ros = totalDays > 0 ? st.units / totalDays : null;
+    const tier = getTierDB(ros);
+    const retPct = st.units > 0 ? (st.rets / st.units) * 100 : null;
+    const avgSellerPrice = st.units > 0 ? st.revenue / st.units : null;
+    const unitCost = costs[st.styleId] !== undefined ? costs[st.styleId] : null;
+    const totalCost = unitCost !== null && st.units > 0 ? unitCost * st.units : null;
+    const catalogueDate = listings[st.styleId] || null;
+    return {...st, ros, tier, retPct, avgSellerPrice, inv:null, doh:null, unitCost, totalCost, catalogueDate};
+  });
+  return {styles, totalDays, retReasonsByStyle, retReasonsBySku};
+}
+
+function getTierDB(ros) {
+  if (ros === null || ros === undefined) return 'D';
+  const t = S.tierThresholds;
+  if (ros > t.VF) return 'VF'; if (ros >= t.F) return 'F';
+  if (ros >= t.M) return 'M';  if (ros >= t.S) return 'S';
+  return 'D';
+}
+
+// ─── RENDER DB SCREEN ────────────────────────────────────
+function renderDBScreen() {
+  document.getElementById('dbLoading').style.display = 'none';
+  const hasSales = Object.keys(DB.salesMonths).length > 0;
+  if (!hasSales && !DB.costMaster.uploadedAt && !DB.listingsMaster.uploadedAt) {
+    document.getElementById('dbEmptyState').style.display = 'flex';
+    document.getElementById('dbFyBar').style.display = 'flex';
+    document.getElementById('dbFyTabs').innerHTML = '';
+    return;
+  }
+  document.getElementById('dbEmptyState').style.display = 'none';
+  document.getElementById('dbFyBar').style.display = 'flex';
+  renderDBFYTabs();
+  if (DB.compareMode) {
+    renderCompare();
+  } else {
+    renderDBFYView();
+  }
+}
+
+// ─── FY TABS ─────────────────────────────────────────────
+function renderDBFYTabs() {
+  const bar = document.getElementById('dbFyTabs');
+  bar.innerHTML = DB.allFYs.map(fy =>
+    `<button class="fy-tab${DB.activeFY===fy&&!DB.compareMode?' active':''}" data-fy="${fy}">${fy}</button>`
+  ).join('') + (DB.allFYs.length >= 2 ?
+    `<button class="fy-tab compare-tab${DB.compareMode?' active':''}" data-fy="compare">⇄ Compare</button>` : '');
+  bar.querySelectorAll('.fy-tab').forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.fy === 'compare') {
+      DB.compareMode = true; DB.activeFY = null;
+      if (!DB.compareFYA && DB.allFYs.length >= 2) { DB.compareFYA = DB.allFYs[DB.allFYs.length-2]; DB.compareFYB = DB.allFYs[DB.allFYs.length-1]; }
+    } else {
+      DB.compareMode = false; DB.activeFY = btn.dataset.fy;
+      DB.selectedMonths = new Set(DB.fyMonths[btn.dataset.fy] || []);
+      DB.dbActiveBrands = new Set(['All']);
+      DB.dbActiveTiers = new Set(['VF','F','M','S','D']);
+    }
+    renderDBFYTabs(); renderDBFYView();
+    if (DB.compareMode) renderCompare();
+  }));
+}
+
+// ─── FY VIEW ─────────────────────────────────────────────
+function renderDBFYView() {
+  if (DB.compareMode) return;
+  const fy = DB.activeFY;
+  const fyMonths = (DB.fyMonths[fy] || []).sort();
+  // All 12 months of the FY
+  const allFYMonths = Array.from({length:12}, (_,i) => getMonthForFY(fy, i+1));
+  document.getElementById('monthTimeline').style.display = 'flex';
+  renderDBMonthTimeline(fy, allFYMonths, fyMonths);
+  // Selected months
+  if (DB.selectedMonths.size === 0) fyMonths.forEach(m => DB.selectedMonths.add(m));
+  const selMonths = fyMonths.filter(m => DB.selectedMonths.has(m));
+  document.getElementById('dbTabBar').style.display = 'flex';
+  document.getElementById('db-compare').style.display = 'none';
+  ['db-overview','db-styles','db-manage'].forEach(id => {
+    document.getElementById(id).classList.remove('active');
+    document.getElementById(id).style.display = 'none';
+  });
+  const activeTab = document.querySelector('.db-tab.active')?.dataset?.dbtab || 'db-overview';
+  document.getElementById(activeTab).classList.add('active');
+  document.getElementById(activeTab).style.display = 'block';
+  if (selMonths.length === 0) {
+    document.getElementById('db-overview').innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;">No months selected. Click months in the timeline above.</div>';
+    document.getElementById('dbFilterBar').style.display = 'none';
+    return;
+  }
+  const {styles, totalDays, retReasonsByStyle, retReasonsBySku} = aggregateDBStyles(selMonths);
+  DB.dbStyles = styles;
+  // Populate S state for shared render functions
+  S.styles = styles;
+  S.days = totalDays;
+  S.retReasonsByStyle = retReasonsByStyle;
+  S.retReasonsBySku = retReasonsBySku;
+  S.daysManual = null;
+  S.hasReturns = selMonths.some(m => DB.returnsMonths[m]);
+  S.hasCost = Object.keys(DB.costMaster.costs||{}).length > 0;
+  S.hasCatalogue = Object.keys(DB.listingsMaster.listings||{}).length > 0;
+  S.hasInventory = false;
+  S.costMap = DB.costMaster.costs||{};
+  S.catalogueMap = DB.listingsMaster.listings||{};
+  S.catalogueMonths = [...new Set(Object.values(DB.listingsMaster.listings||{}).map(parseDateToYYYYMM).filter(Boolean))].sort();
+  const brands = [...new Set(styles.map(r=>r.brand).filter(Boolean))].sort();
+  // Filter bar
+  document.getElementById('dbFilterBar').style.display = 'flex';
+  renderBrandPills('dbBrandPills', brands, DB.dbActiveBrands, ()=>{ refreshDBView(selMonths, fy, allFYMonths, fyMonths); });
+  renderTierPills('dbTierPills', DB.dbActiveTiers, ()=>{ refreshDBView(selMonths, fy, allFYMonths, fyMonths); });
+  document.getElementById('dbSortSelect').value = DB.dbSortKey;
+  if (activeTab === 'db-overview') renderDBOverview(selMonths);
+  if (activeTab === 'db-styles') renderDBTable();
+}
+
+function refreshDBView(selMonths, fy, allFYMonths, fyMonths) {
+  const activeTab = document.querySelector('.db-tab.active')?.dataset?.dbtab || 'db-overview';
+  if (activeTab === 'db-overview') renderDBOverview(selMonths);
+  if (activeTab === 'db-styles') renderDBTable();
+}
+
+// ─── MONTH TIMELINE ──────────────────────────────────────
+function renderDBMonthTimeline(fy, allFYMonths, fyMonths) {
+  const MONTH_LABELS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  const tl = document.getElementById('monthTimeline');
+  const allSelected = fyMonths.length > 0 && fyMonths.every(m => DB.selectedMonths.has(m));
+  tl.innerHTML = MONTH_LABELS.map((lbl, i) => {
+    const month = allFYMonths[i];
+    const hasSales = fyMonths.includes(month);
+    const frozen = isReturnsFrozen(month);
+    const pending = hasSales && !frozen;
+    const selected = DB.selectedMonths.has(month);
+    let dotClass = 'mt-dot';
+    if (hasSales && frozen) dotClass += ' has-sales frozen';
+    else if (hasSales && pending) dotClass += ' has-sales pending';
+    else if (hasSales) dotClass += ' has-sales no-returns';
+    if (selected && hasSales) dotClass += ' selected';
+    const retDot = hasSales ? `<span class="mt-ret-dot ${frozen?'frozen':'pending'}"></span>` : '';
+    const icon = hasSales ? (frozen ? '✓' : '⚠') : '';
+    return `<div class="mt-month${selected&&hasSales?' selected':''}" data-month="${month}" data-has="${hasSales}">
+      <div class="${dotClass}">${icon}${retDot}</div>
+      <div class="mt-label">${lbl}</div>
+    </div>`;
+  }).join('') +
+  `<button class="full-fy-btn${allSelected?' active':''}" id="fullFYBtn" title="Select all available months in ${fy}">Full Year</button>
+  <div class="mt-legend">
+    <div class="mt-legend-item"><div class="mt-legend-dot" style="background:#10b981;border:2px solid #10b981;"></div>Frozen</div>
+    <div class="mt-legend-item"><div class="mt-legend-dot" style="background:#fef3c7;border:2px solid #f59e0b;"></div>Pending</div>
+    <div class="mt-legend-item"><div class="mt-legend-dot" style="background:#f8fafc;border:2px solid #e5e7eb;"></div>No data</div>
+  </div>`;
+  tl.querySelectorAll('.mt-month').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const m = el.dataset.month;
+      if (el.dataset.has !== 'true') return;
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl/Cmd+click: toggle this month in/out
+        if (DB.selectedMonths.has(m)) { if (DB.selectedMonths.size > 1) DB.selectedMonths.delete(m); }
+        else DB.selectedMonths.add(m);
+      } else {
+        // Plain click: select only this month
+        DB.selectedMonths = new Set([m]);
+      }
+      DB.dbActiveBrands = new Set(['All']);
+      DB.dbActiveTiers = new Set(['VF','F','M','S','D']);
+      renderDBFYView();
+    });
+  });
+  const fullBtn = document.getElementById('fullFYBtn');
+  if(fullBtn) fullBtn.addEventListener('click', () => {
+    DB.selectedMonths = new Set(fyMonths);
+    DB.dbActiveBrands = new Set(['All']);
+    DB.dbActiveTiers = new Set(['VF','F','M','S','D']);
+    renderDBFYView();
+  });
+}
+
+// ─── DB OVERVIEW ─────────────────────────────────────────
+const DB_CHARTS = {};
+function destroyDBChart(id) { if(DB_CHARTS[id]){DB_CHARTS[id].destroy();delete DB_CHARTS[id];} }
+function makeDBChart(id,type,labels,datasets,opts={}) {
+  destroyDBChart(id);
+  const ctx = document.getElementById(id); if(!ctx) return;
+  DB_CHARTS[id] = new Chart(ctx.getContext('2d'),{type,data:{labels,datasets},options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:opts.legend||false,position:'right',labels:{font:{family:'DM Sans',size:10},boxWidth:10,padding:8}}},
+    scales:type==='bar'||type==='line'?{x:{ticks:{font:{family:'DM Mono',size:10},color:'#999',maxRotation:45},grid:{display:false}},y:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{color:'#f0f0f0'}}}:undefined,...(opts.extra||{})
+  }});
+}
+
+function getDBFiltered() {
+  let rows = DB.dbStyles;
+  if (!DB.dbActiveBrands.has('All')) rows = rows.filter(r => DB.dbActiveBrands.has(r.brand));
+  rows = rows.filter(r => DB.dbActiveTiers.has(r.tier));
+  return rows;
+}
+
+function renderDBOverview(selMonths) {
+  const el = document.getElementById('db-overview');
+  el.innerHTML = `
+    <div class="kpi-strip" id="dbKpiStrip"></div>
+    <div class="section" id="dbPieSection">
+      <div class="section-title">Brand Breakdown</div>
+      <div class="chart-grid cols2">
+        <div class="chart-card"><div class="chart-card-title">Brand-wise Sales (Units)</div><div class="pie-wrap"><canvas id="dbChartPie1"></canvas></div></div>
+        <div class="chart-card" id="dbPie2Card"><div class="chart-card-title">Brand-wise Returns</div><div class="pie-wrap"><canvas id="dbChartPie2"></canvas></div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Monthly Trend</div>
+      <div class="chart-grid cols2">
+        <div class="chart-card"><div class="chart-card-title">Units Sold by Month</div><div class="chart-wrap"><canvas id="dbChartUnits"></canvas></div></div>
+        <div class="chart-card"><div class="chart-card-title">Revenue by Month (₹)</div><div class="chart-wrap"><canvas id="dbChartRevenue"></canvas></div></div>
+      </div>
+    </div>
+    <div class="section" style="padding-top:0;">
+      <div class="section-title">Brand Performance</div>
+      <div class="chart-grid cols2">
+        <div class="chart-card"><div class="chart-card-title">Units by Brand</div><div class="chart-wrap"><canvas id="dbChartBrandUnits"></canvas></div></div>
+        <div class="chart-card"><div class="chart-card-title" id="dbRetChartTitle">Return % by Brand</div><div class="chart-wrap"><canvas id="dbChartBrandRet"></canvas></div></div>
+      </div>
+      <div class="brand-grid" id="dbBrandOvGrid"></div>
+    </div>
+    <div class="section" style="padding-top:0;">
+      <div class="section-title">Article Type Breakdown</div>
+      <div class="chart-grid cols2">
+        <div class="chart-card"><div class="chart-card-title">Units by Article Type</div><div class="chart-wrap"><canvas id="dbChartArticle"></canvas></div></div>
+        <div class="chart-card"><div class="chart-card-title">Revenue by Article Type</div><div class="chart-wrap"><canvas id="dbChartArticleRev"></canvas></div></div>
+      </div>
+    </div>`;
+  const filtered = getDBFiltered();
+  const totalUnits = filtered.reduce((a,r)=>a+r.units,0);
+  const totalRev = filtered.reduce((a,r)=>a+r.revenue,0);
+  const totalRets = filtered.reduce((a,r)=>a+r.rets,0);
+  const retPct = totalUnits > 0 ? (totalRets/totalUnits)*100 : 0;
+  const totalCOGS = S.hasCost ? filtered.reduce((a,r)=>a+(r.totalCost||0),0) : null;
+  const grossMargin = (totalCOGS!==null&&totalRev>0)?((totalRev-totalCOGS)/totalRev)*100:null;
+  let kh = `
+    <div class="kpi-card c-indigo"><div class="kpi-val">${totalUnits.toLocaleString('en-IN')}</div><div class="kpi-lbl">Total Units</div></div>
+    <div class="kpi-card c-green"><div class="kpi-val">₹${Math.round(totalRev).toLocaleString('en-IN')}</div><div class="kpi-lbl">Total Revenue</div></div>
+    <div class="kpi-card"><div class="kpi-val">${filtered.length}</div><div class="kpi-lbl">Styles</div></div>
+    <div class="kpi-card c-purple"><div class="kpi-val">${S.days}</div><div class="kpi-lbl">Days</div></div>
+    <div class="kpi-card c-amber"><div class="kpi-val">${totalRets.toLocaleString('en-IN')}</div><div class="kpi-lbl">Total Returns</div></div>
+    <div class="kpi-card c-rose"><div class="kpi-val">${retPct.toFixed(1)}%</div><div class="kpi-lbl">Return %</div></div>`;
+  if(totalCOGS!==null) kh+=`<div class="kpi-card c-orange"><div class="kpi-val">₹${Math.round(totalCOGS).toLocaleString('en-IN')}</div><div class="kpi-lbl">Working Capital</div></div>${grossMargin!==null?`<div class="kpi-card c-blue"><div class="kpi-val">${grossMargin.toFixed(1)}%</div><div class="kpi-lbl">Gross Margin</div></div>`:''}`;
+  document.getElementById('dbKpiStrip').innerHTML = kh;
+  // Pie charts
+  const brands = [...new Set(filtered.map(r=>r.brand).filter(Boolean))].sort();
+  const bColors = brands.map(b => BRAND_COLORS[b] || PIE_FALLBACK[brands.indexOf(b) % PIE_FALLBACK.length]);
+  const salesPieData = brands.map(b => filtered.filter(r=>r.brand===b).reduce((a,r)=>a+r.units,0));
+  makeDBChart('dbChartPie1','doughnut',brands,[{data:salesPieData,backgroundColor:bColors,borderWidth:2,borderColor:'#fff'}],{legend:true});
+  if (S.hasReturns) {
+    const retPieData = brands.map(b => filtered.filter(r=>r.brand===b).reduce((a,r)=>a+r.rets,0));
+    makeDBChart('dbChartPie2','doughnut',brands,[{data:retPieData,backgroundColor:bColors,borderWidth:2,borderColor:'#fff'}],{legend:true});
+  } else { document.getElementById('dbPie2Card').style.display='none'; }
+  // Monthly trend
+  const sortedSel = [...selMonths].sort();
+  const trendLabels = sortedSel.map(formatMonth);
+  const trendUnits = sortedSel.map(m => {
+    const md = DB.salesMonths[m]; if (!md) return 0;
+    const inFilter = new Set(filtered.map(r=>r.styleId));
+    return Object.entries(md.styles||{}).filter(([sid])=>inFilter.has(sid)).reduce((a,[,sd])=>a+sd.units,0);
+  });
+  const trendRev = sortedSel.map(m => {
+    const md = DB.salesMonths[m]; if (!md) return 0;
+    const inFilter = new Set(filtered.map(r=>r.styleId));
+    return Object.entries(md.styles||{}).filter(([sid])=>inFilter.has(sid)).reduce((a,[,sd])=>a+sd.revenue,0);
+  });
+  makeDBChart('dbChartUnits','bar',trendLabels,[{data:trendUnits,backgroundColor:'#818cf8',borderRadius:4}]);
+  makeDBChart('dbChartRevenue','bar',trendLabels,[{data:trendRev.map(v=>Math.round(v)),backgroundColor:'#34d399',borderRadius:4}]);
+  // Brand bar charts
+  const bColors2 = brands.map(b=>BRAND_COLORS[b]||'#94a3b8');
+  makeDBChart('dbChartBrandUnits','bar',brands,[{data:brands.map(b=>filtered.filter(r=>r.brand===b).reduce((a,r)=>a+r.units,0)),backgroundColor:bColors2,borderRadius:4}]);
+  if(S.hasReturns) makeDBChart('dbChartBrandRet','bar',brands,[{data:brands.map(b=>{const br=filtered.filter(r=>r.brand===b),u=br.reduce((a,r)=>a+r.units,0),rt=br.reduce((a,r)=>a+r.rets,0);return u>0?parseFloat((rt/u*100).toFixed(1)):0;}),backgroundColor:bColors2.map(c=>c+'99'),borderRadius:4}]);
+  // Brand cards
+  document.getElementById('dbBrandOvGrid').innerHTML = brands.map(b=>{
+    const br=filtered.filter(r=>r.brand===b);
+    const u=br.reduce((a,r)=>a+r.units,0),rev=br.reduce((a,r)=>a+r.revenue,0),rt=br.reduce((a,r)=>a+r.rets,0);
+    const rp=u>0?(rt/u*100).toFixed(1):'—';
+    const cogs=S.hasCost?br.reduce((a,r)=>a+(r.totalCost||0),0):null;
+    return `<div class="brand-ov-card"><div class="boc-name">${b}</div><div class="boc-row"><span>Units</span><span class="boc-val">${u.toLocaleString('en-IN')}</span></div><div class="boc-row"><span>Revenue</span><span class="boc-val">₹${Math.round(rev).toLocaleString('en-IN')}</span></div><div class="boc-row"><span>Returns</span><span class="boc-val">${rt} (${rp}%)</span></div>${cogs!==null?`<div class="boc-row"><span>Working Capital</span><span class="boc-val">₹${Math.round(cogs).toLocaleString('en-IN')}</span></div>`:''}</div>`;
+  }).join('');
+  // Article type
+  const artMap={};
+  filtered.forEach(r=>{const at=r.articleType||'Other';if(!artMap[at])artMap[at]={units:0,revenue:0};artMap[at].units+=r.units;artMap[at].revenue+=r.revenue;});
+  const arts=Object.keys(artMap).sort((a,b)=>artMap[b].units-artMap[a].units).slice(0,10);
+  const artColors=['#818cf8','#34d399','#f59e0b','#f472b6','#60a5fa','#a78bfa','#fb923c','#4ade80','#e879f9','#38bdf8'];
+  makeDBChart('dbChartArticle','bar',arts,[{data:arts.map(a=>artMap[a].units),backgroundColor:artColors,borderRadius:4}]);
+  makeDBChart('dbChartArticleRev','bar',arts,[{data:arts.map(a=>Math.round(artMap[a].revenue)),backgroundColor:artColors.map(c=>c+'bb'),borderRadius:4}]);
+}
+
+// ─── DB TABLE ────────────────────────────────────────────
+function renderDBTable() {
+  const q = (document.getElementById('dbSearchInput')?.value||'').trim().toLowerCase();
+  let filtered = getDBFiltered();
+  if(q) filtered = filtered.filter(r=>
+    (r.styleId||'').toLowerCase().includes(q)||
+    (r.firstSku||'').toLowerCase().includes(q)||
+    (r.articleType||'').toLowerCase().includes(q)||
+    (r.brand||'').toLowerCase().includes(q)
+  );
+  renderTable('dbTableBody','dbTableHead', filtered, {sortKey:DB.dbSortKey, showSku:true, isDB:true});
+}
+
+// ─── COMPARATIVE ANALYSIS ────────────────────────────────
+function cmpDelta(a,b,invert=false) {
+  if(!a) return '<span class="compare-delta delta-neutral">NEW</span>';
+  const pct=((b-a)/a)*100;
+  const up=invert?pct<0:pct>=0;
+  const cls=pct===0?'delta-neutral':up?'delta-up':'delta-down';
+  return `<span class="compare-delta ${cls}">${pct>=0?'+':''}${pct.toFixed(1)}%</span>`;
+}
+
+function renderCompare() {
+  document.getElementById('monthTimeline').style.display = 'none';
+  document.getElementById('dbTabBar').style.display = 'none';
+  document.getElementById('dbFilterBar').style.display = 'none';
+  ['db-overview','db-styles','db-manage'].forEach(id=>{ document.getElementById(id).style.display='none'; document.getElementById(id).classList.remove('active'); });
+  const cpanel = document.getElementById('db-compare');
+  cpanel.style.display = 'block';
+  const sub = DB.compareSubMode || 'fy';
+  cpanel.innerHTML = `
+    <div class="compare-sub-tabs">
+      <button class="compare-sub-btn${sub==='fy'?' active':''}" data-sub="fy">FY vs FY</button>
+      <button class="compare-sub-btn${sub==='month'?' active':''}" data-sub="month">Month vs Month</button>
+    </div>
+    <div id="cmpSubBody"></div>`;
+  cpanel.querySelectorAll('.compare-sub-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{ DB.compareSubMode=btn.dataset.sub; renderCompare(); });
+  });
+  if (sub === 'fy') renderCompareFY();
+  else renderCompareMth();
+}
+
+function renderCompareFY() {
+  const cont = document.getElementById('cmpSubBody');
+  const fyA = DB.compareFYA || DB.allFYs[0];
+  const fyB = DB.compareFYB || DB.allFYs[1];
+  const fyAMonths = DB.fyMonths[fyA] || [];
+  const fyBMonths = DB.fyMonths[fyB] || [];
+  const fyAPos = new Set(fyAMonths.map(getFYMonth));
+  const fyBPos = new Set(fyBMonths.map(getFYMonth));
+  const commonPos = [...fyAPos].filter(p=>fyBPos.has(p)).sort((a,b)=>a-b);
+  const MONTH_NAMES = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  const rows = commonPos.map(pos=>{
+    const mA=getMonthForFY(fyA,pos), mB=getMonthForFY(fyB,pos);
+    return {label:MONTH_NAMES[pos-1], mA, mB, sdA:DB.salesMonths[mA], sdB:DB.salesMonths[mB], rdA:DB.returnsMonths[mA], rdB:DB.returnsMonths[mB]};
+  });
+  const costs=DB.costMaster.costs||{};
+  const hasCost=Object.keys(costs).length>0;
+  const totA={units:0,revenue:0,rets:0,wc:0,styles:new Set()};
+  const totB={units:0,revenue:0,rets:0,wc:0,styles:new Set()};
+  rows.forEach(r=>{
+    totA.units+=r.sdA?.totalUnits||0; totA.revenue+=r.sdA?.totalRevenue||0; totA.rets+=r.rdA?.totalRets||0;
+    totB.units+=r.sdB?.totalUnits||0; totB.revenue+=r.sdB?.totalRevenue||0; totB.rets+=r.rdB?.totalRets||0;
+    Object.keys(r.sdA?.styles||{}).forEach(s=>totA.styles.add(s));
+    Object.keys(r.sdB?.styles||{}).forEach(s=>totB.styles.add(s));
+    if(hasCost){
+      Object.entries(r.sdA?.styles||{}).forEach(([sid,sd])=>{ const c=costs[sid]; if(c) totA.wc+=c*(sd.units||0); });
+      Object.entries(r.sdB?.styles||{}).forEach(([sid,sd])=>{ const c=costs[sid]; if(c) totB.wc+=c*(sd.units||0); });
+    }
+  });
+  const avgPA=totA.units>0?totA.revenue/totA.units:0, avgPB=totB.units>0?totB.revenue/totB.units:0;
+  const rpA=totA.units>0?(totA.rets/totA.units*100):0, rpB=totB.units>0?(totB.rets/totB.units*100):0;
+  cont.innerHTML = `
+    <div class="compare-header">
+      <span style="font-size:12px;font-weight:600;color:#555;">Comparing</span>
+      <select class="compare-fy-select" id="cmpFyA">${DB.allFYs.map(f=>`<option value="${f}"${f===fyA?' selected':''}>${f}</option>`).join('')}</select>
+      <span class="compare-vs">vs</span>
+      <select class="compare-fy-select" id="cmpFyB">${DB.allFYs.map(f=>`<option value="${f}"${f===fyB?' selected':''}>${f}</option>`).join('')}</select>
+      <div class="compare-note">Matching ${commonPos.length} month${commonPos.length!==1?'s':''}: ${commonPos.map(p=>MONTH_NAMES[p-1]).join(', ')||'—'}</div>
+    </div>
+    <div class="compare-kpi-row">
+      <div class="compare-kpi"><div class="compare-kpi-label">Units</div><div class="compare-kpi-vals"><span class="compare-kpi-a">${totA.units.toLocaleString('en-IN')}</span><span class="compare-kpi-b">${totB.units.toLocaleString('en-IN')}</span>${cmpDelta(totA.units,totB.units)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">Revenue</div><div class="compare-kpi-vals"><span class="compare-kpi-a">₹${Math.round(totA.revenue/100000).toLocaleString('en-IN')}L</span><span class="compare-kpi-b">₹${Math.round(totB.revenue/100000).toLocaleString('en-IN')}L</span>${cmpDelta(totA.revenue,totB.revenue)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">Returns</div><div class="compare-kpi-vals"><span class="compare-kpi-a">${totA.rets.toLocaleString('en-IN')}</span><span class="compare-kpi-b">${totB.rets.toLocaleString('en-IN')}</span>${cmpDelta(totA.rets,totB.rets,true)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">Return %</div><div class="compare-kpi-vals"><span class="compare-kpi-a">${rpA.toFixed(1)}%</span><span class="compare-kpi-b">${rpB.toFixed(1)}%</span>${cmpDelta(rpA,rpB,true)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">Avg Selling Price</div><div class="compare-kpi-vals"><span class="compare-kpi-a">₹${Math.round(avgPA).toLocaleString('en-IN')}</span><span class="compare-kpi-b">₹${Math.round(avgPB).toLocaleString('en-IN')}</span>${cmpDelta(avgPA,avgPB)}</div></div>
+      ${hasCost?`<div class="compare-kpi"><div class="compare-kpi-label">Working Capital</div><div class="compare-kpi-vals"><span class="compare-kpi-a">₹${Math.round(totA.wc/100000).toLocaleString('en-IN')}L</span><span class="compare-kpi-b">₹${Math.round(totB.wc/100000).toLocaleString('en-IN')}L</span>${cmpDelta(totA.wc,totB.wc)}</div></div>`:''}
+      <div class="compare-kpi"><div class="compare-kpi-label">Unique Styles</div><div class="compare-kpi-vals"><span class="compare-kpi-a">${totA.styles.size}</span><span class="compare-kpi-b">${totB.styles.size}</span>${cmpDelta(totA.styles.size,totB.styles.size)}</div></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Month-by-Month Trend</div>
+      <div class="chart-grid cols2">
+        <div class="chart-card"><div class="chart-card-title">Units</div><div class="chart-wrap"><canvas id="cmpChartUnits"></canvas></div></div>
+        <div class="chart-card"><div class="chart-card-title">Revenue (₹)</div><div class="chart-wrap"><canvas id="cmpChartRev"></canvas></div></div>
+      </div>
+    </div>
+    <div class="compare-month-table">
+      <div class="section-title">Month-by-Month Detail</div>
+      <div style="margin-top:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+        <div class="cmt-head">
+          <div>Month</div>
+          <div style="color:#6366f1;">${fyA} Units</div><div style="color:#f59e0b;">${fyB} Units</div><div>Δ Units</div>
+          <div style="color:#6366f1;">${fyA} Rev</div><div style="color:#f59e0b;">${fyB} Rev</div><div>Δ Rev</div>
+          <div style="color:#6366f1;">${fyA} Ret%</div><div style="color:#f59e0b;">${fyB} Ret%</div><div>Δ Avg₹</div>
+        </div>
+        ${rows.map(r=>{
+          const uA=r.sdA?.totalUnits||0,uB=r.sdB?.totalUnits||0;
+          const rA=r.sdA?.totalRevenue||0,rB=r.sdB?.totalRevenue||0;
+          const retA=r.rdA?.totalRets||0,retB=r.rdB?.totalRets||0;
+          const rpA=uA>0?(retA/uA*100).toFixed(1):'—',rpB=uB>0?(retB/uB*100).toFixed(1):'—';
+          const apA=uA>0?rA/uA:0,apB=uB>0?rB/uB:0;
+          return `<div class="cmt-row">
+            <div class="cmt-month">${r.label}</div>
+            <div>${uA.toLocaleString('en-IN')}</div><div>${uB.toLocaleString('en-IN')}</div><div>${cmpDelta(uA,uB)}</div>
+            <div>₹${Math.round(rA/1000)}K</div><div>₹${Math.round(rB/1000)}K</div><div>${cmpDelta(rA,rB)}</div>
+            <div>${rpA}%</div><div>${rpB}%</div><div>${cmpDelta(apA,apB)}</div>
+          </div>`;
+        }).join('')||`<div class="cmt-row"><div class="cmt-month" style="color:#aaa;padding:20px;">No common months found between ${fyA} and ${fyB}</div></div>`}
+      </div>
+    </div>`;
+  const labels=rows.map(r=>r.label);
+  setTimeout(()=>{
+    destroyDBChart('cmpChartUnits'); destroyDBChart('cmpChartRev');
+    const ctx1=document.getElementById('cmpChartUnits'), ctx2=document.getElementById('cmpChartRev');
+    if(ctx1) DB_CHARTS['cmpChartUnits']=new Chart(ctx1.getContext('2d'),{type:'bar',data:{labels,datasets:[{label:fyA,data:rows.map(r=>r.sdA?.totalUnits||0),backgroundColor:'#818cf8aa',borderRadius:3},{label:fyB,data:rows.map(r=>r.sdB?.totalUnits||0),backgroundColor:'#f59e0baa',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{family:'DM Sans',size:10},boxWidth:10}}},scales:{x:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{display:false}},y:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{color:'#f0f0f0'}}}}});
+    if(ctx2) DB_CHARTS['cmpChartRev']=new Chart(ctx2.getContext('2d'),{type:'bar',data:{labels,datasets:[{label:fyA,data:rows.map(r=>Math.round(r.sdA?.totalRevenue||0)),backgroundColor:'#34d399aa',borderRadius:3},{label:fyB,data:rows.map(r=>Math.round(r.sdB?.totalRevenue||0)),backgroundColor:'#fb923caa',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{family:'DM Sans',size:10},boxWidth:10}}},scales:{x:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{display:false}},y:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{color:'#f0f0f0'}}}}});
+  },50);
+  document.getElementById('cmpFyA').addEventListener('change',e=>{DB.compareFYA=e.target.value;renderCompare();});
+  document.getElementById('cmpFyB').addEventListener('change',e=>{DB.compareFYB=e.target.value;renderCompare();});
+}
+
+function renderCompareMth() {
+  const cont = document.getElementById('cmpSubBody');
+  const allMonths = Object.keys(DB.salesMonths).sort();
+  if (allMonths.length < 2) {
+    cont.innerHTML = `<div style="padding:60px;text-align:center;color:#aaa;font-size:12px;">Need at least 2 months of data to compare.</div>`;
+    return;
+  }
+  // Smart defaults: same FY position from different FYs
+  if (!DB.compareMthA || !DB.salesMonths[DB.compareMthA]) {
+    const lastFY = DB.allFYs[DB.allFYs.length-1];
+    DB.compareMthA = (DB.fyMonths[lastFY]||[]).sort()[0] || allMonths[allMonths.length-1];
+  }
+  if (!DB.compareMthB || !DB.salesMonths[DB.compareMthB] || DB.compareMthB===DB.compareMthA) {
+    const pos = getFYMonth(DB.compareMthA);
+    const fyOfA = getFY(DB.compareMthA);
+    const prevFYIdx = DB.allFYs.indexOf(fyOfA)-1;
+    const candidate = prevFYIdx>=0 ? getMonthForFY(DB.allFYs[prevFYIdx],pos) : null;
+    DB.compareMthB = (candidate && DB.salesMonths[candidate]) ? candidate : allMonths.find(m=>m!==DB.compareMthA)||allMonths[0];
+  }
+  const mA=DB.compareMthA, mB=DB.compareMthB;
+  const sdA=DB.salesMonths[mA], sdB=DB.salesMonths[mB];
+  const rdA=DB.returnsMonths[mA], rdB=DB.returnsMonths[mB];
+  const uA=sdA?.totalUnits||0, uB=sdB?.totalUnits||0;
+  const rA=sdA?.totalRevenue||0, rB=sdB?.totalRevenue||0;
+  const retsA=rdA?.totalRets||0, retsB=rdB?.totalRets||0;
+  const avgPA=uA>0?rA/uA:0, avgPB=uB>0?rB/uB:0;
+  const rpA=uA>0?retsA/uA*100:0, rpB=uB>0?retsB/uB*100:0;
+  const daysA=getDaysInMonth(mA), daysB=getDaysInMonth(mB);
+  const rosA=daysA>0?uA/daysA:0, rosB=daysB>0?uB/daysB:0;
+  const stylesA=Object.keys(sdA?.styles||{}).length, stylesB=Object.keys(sdB?.styles||{}).length;
+  const costs=DB.costMaster.costs||{};
+  const hasCost=Object.keys(costs).length>0;
+  let wcA=0,wcB=0;
+  if(hasCost){
+    Object.entries(sdA?.styles||{}).forEach(([sid,sd])=>{ const c=costs[sid]; if(c) wcA+=c*(sd.units||0); });
+    Object.entries(sdB?.styles||{}).forEach(([sid,sd])=>{ const c=costs[sid]; if(c) wcB+=c*(sd.units||0); });
+  }
+  // Per-brand breakdown
+  const brandsA={},brandsB={};
+  Object.entries(sdA?.styles||{}).forEach(([sid,sd])=>{ const b=sd.brand||'Other'; if(!brandsA[b]) brandsA[b]={units:0,revenue:0}; brandsA[b].units+=sd.units||0; brandsA[b].revenue+=sd.revenue||0; });
+  Object.entries(sdB?.styles||{}).forEach(([sid,sd])=>{ const b=sd.brand||'Other'; if(!brandsB[b]) brandsB[b]={units:0,revenue:0}; brandsB[b].units+=sd.units||0; brandsB[b].revenue+=sd.revenue||0; });
+  const allBrands=[...new Set([...Object.keys(brandsA),...Object.keys(brandsB)])].sort();
+  const metrics=[
+    {label:'Units Sold', a:uA.toLocaleString('en-IN'), b:uB.toLocaleString('en-IN'), d:cmpDelta(uA,uB)},
+    {label:'Revenue', a:`₹${Math.round(rA/1000)}K`, b:`₹${Math.round(rB/1000)}K`, d:cmpDelta(rA,rB)},
+    {label:'Avg Selling Price', a:`₹${Math.round(avgPA)}`, b:`₹${Math.round(avgPB)}`, d:cmpDelta(avgPA,avgPB)},
+    {label:'Returns', a:retsA.toLocaleString('en-IN'), b:retsB.toLocaleString('en-IN'), d:cmpDelta(retsA,retsB,true)},
+    {label:'Return %', a:`${rpA.toFixed(1)}%`, b:`${rpB.toFixed(1)}%`, d:cmpDelta(rpA,rpB,true)},
+    {label:'ROS / day', a:rosA.toFixed(3), b:rosB.toFixed(3), d:cmpDelta(rosA,rosB)},
+    {label:'Unique Styles', a:stylesA, b:stylesB, d:cmpDelta(stylesA,stylesB)},
+    ...(hasCost?[{label:'Working Capital', a:`₹${Math.round(wcA/1000)}K`, b:`₹${Math.round(wcB/1000)}K`, d:cmpDelta(wcA,wcB)}]:[]),
+  ];
+  const mthOpts=allMonths.map(m=>`<option value="${m}"${m===mA?' selected':''}>${formatMonth(m)}</option>`).join('');
+  const mthOptsB=allMonths.map(m=>`<option value="${m}"${m===mB?' selected':''}>${formatMonth(m)}</option>`).join('');
+  const tblStyle=`background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;`;
+  const thStyle=(col)=>`flex:${col};padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;`;
+  const tdStyle=(col,mono=false)=>`flex:${col};padding:9px 12px;font-size:12px;${mono?`font-family:'DM Mono',monospace;`:''}`;
+  cont.innerHTML=`
+    <div class="compare-header">
+      <span style="font-size:12px;font-weight:600;color:#555;">Comparing</span>
+      <select class="compare-fy-select" id="cmpMthA">${mthOpts}</select>
+      <span class="compare-vs">vs</span>
+      <select class="compare-fy-select" id="cmpMthB">${mthOptsB}</select>
+    </div>
+    <div class="compare-kpi-row">
+      <div class="compare-kpi"><div class="compare-kpi-label">Units</div><div class="compare-kpi-vals"><span class="compare-kpi-a">${uA.toLocaleString('en-IN')}</span><span class="compare-kpi-b">${uB.toLocaleString('en-IN')}</span>${cmpDelta(uA,uB)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">Revenue</div><div class="compare-kpi-vals"><span class="compare-kpi-a">₹${Math.round(rA/1000)}K</span><span class="compare-kpi-b">₹${Math.round(rB/1000)}K</span>${cmpDelta(rA,rB)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">Return %</div><div class="compare-kpi-vals"><span class="compare-kpi-a">${rpA.toFixed(1)}%</span><span class="compare-kpi-b">${rpB.toFixed(1)}%</span>${cmpDelta(rpA,rpB,true)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">Avg Price</div><div class="compare-kpi-vals"><span class="compare-kpi-a">₹${Math.round(avgPA)}</span><span class="compare-kpi-b">₹${Math.round(avgPB)}</span>${cmpDelta(avgPA,avgPB)}</div></div>
+      <div class="compare-kpi"><div class="compare-kpi-label">ROS / day</div><div class="compare-kpi-vals"><span class="compare-kpi-a">${rosA.toFixed(3)}</span><span class="compare-kpi-b">${rosB.toFixed(3)}</span>${cmpDelta(rosA,rosB)}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 28px 24px;">
+      <div>
+        <div class="section-title" style="margin-bottom:10px;">Detailed Metrics</div>
+        <div style="${tblStyle}">
+          <div style="display:flex;background:#fafafa;border-bottom:1px solid #e5e7eb;">
+            <div style="${thStyle(2)}color:#999;">Metric</div>
+            <div style="${thStyle(1)}color:#6366f1;">${formatMonth(mA)}</div>
+            <div style="${thStyle(1)}color:#f59e0b;">${formatMonth(mB)}</div>
+            <div style="${thStyle(1)}color:#999;">Δ</div>
+          </div>
+          ${metrics.map(row=>`<div style="display:flex;border-bottom:1px solid #f0f0f0;">
+            <div style="${tdStyle(2)}font-weight:600;color:#555;">${row.label}</div>
+            <div style="${tdStyle(1,true)}color:#6366f1;">${row.a}</div>
+            <div style="${tdStyle(1,true)}color:#f59e0b;">${row.b}</div>
+            <div style="${tdStyle(1)}">${row.d}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      ${allBrands.length>1?`
+      <div>
+        <div class="section-title" style="margin-bottom:10px;">Brand Breakdown (Units)</div>
+        <div style="${tblStyle}">
+          <div style="display:flex;background:#fafafa;border-bottom:1px solid #e5e7eb;">
+            <div style="${thStyle(2)}color:#999;">Brand</div>
+            <div style="${thStyle(1)}color:#6366f1;">${formatMonth(mA)}</div>
+            <div style="${thStyle(1)}color:#f59e0b;">${formatMonth(mB)}</div>
+            <div style="${thStyle(1)}color:#999;">Δ</div>
+          </div>
+          ${allBrands.map(b=>{const a=brandsA[b]||{units:0};const bb=brandsB[b]||{units:0};return `<div style="display:flex;border-bottom:1px solid #f0f0f0;">
+            <div style="${tdStyle(2)}font-weight:600;color:#555;">${b}</div>
+            <div style="${tdStyle(1,true)}color:#6366f1;">${a.units.toLocaleString('en-IN')}</div>
+            <div style="${tdStyle(1,true)}color:#f59e0b;">${bb.units.toLocaleString('en-IN')}</div>
+            <div style="${tdStyle(1)}">${cmpDelta(a.units,bb.units)}</div>
+          </div>`;}).join('')}
+        </div>
+      </div>`:
+      `<div>
+        <div class="section-title" style="margin-bottom:10px;">Overview Chart</div>
+        <div class="chart-card" style="height:260px;"><div class="chart-wrap"><canvas id="cmpChartMth"></canvas></div></div>
+      </div>`}
+    </div>`;
+  document.getElementById('cmpMthA').addEventListener('change',e=>{DB.compareMthA=e.target.value;renderCompare();});
+  document.getElementById('cmpMthB').addEventListener('change',e=>{DB.compareMthB=e.target.value;renderCompare();});
+  if(allBrands.length<=1) setTimeout(()=>{
+    const ctx=document.getElementById('cmpChartMth'); if(!ctx) return;
+    destroyDBChart('cmpChartMth');
+    DB_CHARTS['cmpChartMth']=new Chart(ctx.getContext('2d'),{type:'bar',data:{labels:['Units','Revenue (K₹)','Returns'],datasets:[{label:formatMonth(mA),data:[uA,Math.round(rA/1000),retsA],backgroundColor:'#818cf8aa',borderRadius:3},{label:formatMonth(mB),data:[uB,Math.round(rB/1000),retsB],backgroundColor:'#f59e0baa',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{family:'DM Sans',size:10},boxWidth:10}}},scales:{x:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{display:false}},y:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{color:'#f0f0f0'}}}}});
+  },50);
+}
+
+// ─── FILE HANDLING (one-time) ────────────────────────────
 function renderFileList() {
   const list=document.getElementById('fileList');
   if(!S.files.length){list.innerHTML='';return;}
@@ -1774,7 +2627,7 @@ document.getElementById('backToModeBtn').addEventListener('click', () => {
   document.getElementById('modeScreen').style.display='block';
   document.getElementById('uploadScreen').style.display='none';
   document.getElementById('dashboard').style.display='none';
-  document.getElementById('ghLoadScreen').style.display='none';
+  document.getElementById('dbScreen').style.display='none';
   document.getElementById('backToModeBtn').style.display='none';
   document.getElementById('topStatus').textContent='Select a mode to get started';
   document.getElementById('topStatus').classList.remove('loaded');
@@ -1848,9 +2701,9 @@ document.getElementById('tierResetBtn').addEventListener('click',()=>{document.g
 // ─── TIER THRESHOLD HELPERS ──────────────────────────────
 function syncTierInfoBoxes() {
   const t=S.tierThresholds;
-  const _vfEl=document.getElementById('li-VF');if(_vfEl)_vfEl.textContent=t.VF;
-  const _fEl=document.getElementById('li-F');if(_fEl)_fEl.textContent=t.F;
-  const _mEl=document.getElementById('li-M');if(_mEl)_mEl.textContent=t.M;
+  ['li-VF','db-li-VF'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t.VF;});
+  ['li-F','db-li-F'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t.F;});
+  ['li-M','db-li-M'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t.M;});
 }
 function validateTierInputs(vf,f,m) {
   if(isNaN(vf)||isNaN(f)||isNaN(m)) return 'All fields must be valid numbers.';
@@ -1859,6 +2712,7 @@ function validateTierInputs(vf,f,m) {
   if(f<=m) return 'F must be greater than M.';
   return null;
 }
+
 // Tier info popup — one-time view
 const tierInfoBtn=document.getElementById('tierInfoBtn'),tierInfoBox=document.getElementById('tierInfoBox');
 tierInfoBtn.addEventListener('click',e=>{
@@ -1892,6 +2746,46 @@ document.getElementById('tierInfoSaveBtn').addEventListener('click',()=>{
   tierInfoBox.style.display='none';
   renderTable();
   if(document.getElementById('tab-overview').classList.contains('active'))renderOverview('onetimeview');
+});
+
+// Tier info popup — DB mode
+let _dbTierEditOpening=false;
+const dbTierInfoBtn=document.getElementById('dbTierInfoBtn'),dbTierInfoBox=document.getElementById('dbTierInfoBox');
+dbTierInfoBtn.addEventListener('click',e=>{
+  e.stopPropagation();
+  const vis=dbTierInfoBox.style.display==='block';
+  if(!vis){document.getElementById('dbTierInfoView').style.display='';document.getElementById('dbTierInfoEdit').style.display='none';}
+  dbTierInfoBox.style.display=vis?'none':'block';
+});
+document.addEventListener('click',e=>{
+  if(_dbTierEditOpening){_dbTierEditOpening=false;return;}
+  if(!dbTierInfoBox.contains(e.target)&&e.target!==dbTierInfoBtn)dbTierInfoBox.style.display='none';
+});
+document.getElementById('dbTierInfoEditBtn').addEventListener('click',()=>{
+    _dbTierEditOpening=true;
+    document.getElementById('db-ti-VF').value=S.tierThresholds.VF;
+    document.getElementById('db-ti-F').value=S.tierThresholds.F;
+    document.getElementById('db-ti-M').value=S.tierThresholds.M;
+    document.getElementById('dbTierInfoEditErr').style.display='none';
+    document.getElementById('dbTierInfoView').style.display='none';
+    document.getElementById('dbTierInfoEdit').style.display='';
+    dbTierInfoBox.style.display='block';
+});
+
+document.getElementById('dbTierInfoCancelBtn').addEventListener('click',()=>{
+  document.getElementById('dbTierInfoEdit').style.display='none';
+  document.getElementById('dbTierInfoView').style.display='';
+});
+document.getElementById('dbTierInfoSaveBtn').addEventListener('click',()=>{
+  const vf=parseFloat(document.getElementById('db-ti-VF').value);
+  const f=parseFloat(document.getElementById('db-ti-F').value);
+  const m=parseFloat(document.getElementById('db-ti-M').value);
+  const err=validateTierInputs(vf,f,m);
+  if(err){document.getElementById('dbTierInfoEditErr').textContent=err;document.getElementById('dbTierInfoEditErr').style.display='';return;}
+  S.tierThresholds={VF:vf,F:f,M:m,S:0.001};
+  syncTierInfoBoxes();
+  dbTierInfoBox.style.display='none';
+  renderDBScreen();
 });
 
 // ─── MANAGE FILES (ONE-TIME VIEW) ────────────────────────
@@ -2005,8 +2899,51 @@ document.getElementById('smKpis').addEventListener('click',e=>{
   const style=S.styles.find(s=>s.styleId===sid);
   showReturnReasonsPopup(`Return Reasons — ${sid}`,style?.styleName||sid,S.retReasonsByStyle[sid]||{});
 });
-// Search bar
+// DB view: SKU drill — shows aggregated SKU data from DB
+document.getElementById('dbTableBody').addEventListener('click',e=>{
+  const skuBtn=e.target.closest('.sku-drill-btn');
+  if(skuBtn){
+    const sid=skuBtn.dataset.sid;
+    const style=DB.dbStyles.find(s=>s.styleId===sid); if(!style) return;
+    const skuArr=Object.values(style.skus||{}).map(s=>({...s}));
+    showSkuModal(sid,skuArr); return;
+  }
+  const rrBtn=e.target.closest('.ret-reason-btn[data-mode="style"]');
+  if(rrBtn){
+    const sid=rrBtn.dataset.sid;
+    const style=DB.dbStyles.find(s=>s.styleId===sid);
+    showReturnReasonsPopup(`Return Reasons — ${sid}`,style?.styleName||sid,S.retReasonsByStyle[sid]||{});
+  }
+});
+// Search bars
 document.getElementById('otSearchInput')?.addEventListener('input',()=>renderTable());
+document.getElementById('dbSearchInput')?.addEventListener('input',()=>renderDBTable());
+
+// DB mode tabs
+document.querySelectorAll('.db-tab').forEach(btn=>btn.addEventListener('click',()=>{
+  // Clicking a tab exits manage mode
+  document.getElementById('db-manage').style.display='none';
+  document.getElementById('db-manage').classList.remove('active');
+  document.querySelectorAll('.db-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const tab=btn.dataset.dbtab;
+  ['db-overview','db-styles'].forEach(id=>{document.getElementById(id).style.display='none';document.getElementById(id).classList.remove('active');});
+  document.getElementById(tab).style.display='block';
+  document.getElementById(tab).classList.add('active');
+  const selMonths=(DB.fyMonths[DB.activeFY]||[]).filter(m=>DB.selectedMonths.has(m));
+  if(tab==='db-overview') renderDBOverview(selMonths);
+  else if(tab==='db-styles') renderDBTable();
+  document.getElementById('dbFilterBar').style.display='flex';
+}));
+
+    document.getElementById('dbFilterBar').style.display='none';
+    manageEl.style.display='block';
+    manageEl.classList.add('active');
+  }
+});
+
+// DB sort
+document.getElementById('dbSortSelect').addEventListener('change',e=>{DB.dbSortKey=e.target.value;renderDBTable();});
 
 document.getElementById('repeatDownloadBtn').addEventListener('click',downloadRepeatPlan);
 document.getElementById('styleSubTabBar').querySelectorAll('.style-subtab').forEach(btn=>btn.addEventListener('click',()=>{
