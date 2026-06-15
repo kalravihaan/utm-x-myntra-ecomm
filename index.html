@@ -1,0 +1,2246 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>UTM × Myntra — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:#f1f5f9;color:#111;font-size:13px;line-height:1.5;min-height:100vh;}
+
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:1000;background:#fff;padding:0 28px;display:flex;align-items:center;gap:0;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.tlogo{font-family:'Playfair Display',serif;font-size:12px;font-weight:700;color:#aaa;letter-spacing:0.12em;text-transform:uppercase;padding:15px 20px 15px 0;margin-right:16px;border-right:1px solid #e5e7eb;white-space:nowrap;}
+.tlogo span{color:#4f46e5;}
+.tstatus{font-size:11px;color:#aaa;letter-spacing:0.04em;padding:15px 0;flex:1;}
+.tstatus.loaded{color:#059669;}
+.tback-btn{font-size:11px;font-weight:600;color:#888;background:none;border:1px solid #e5e7eb;border-radius:6px;padding:6px 14px;cursor:pointer;white-space:nowrap;margin-left:auto;}
+.tback-btn:hover{color:#111;border-color:#aaa;}
+
+/* MODE SCREEN */
+.mode-screen{min-height:calc(100vh - 51px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:24px;}
+.mode-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#111;text-align:center;}
+.mode-sub{font-size:12px;color:#888;text-align:center;max-width:420px;}
+.mode-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:720px;width:100%;}
+.mode-card{background:#fff;border:2px solid #e5e7eb;border-radius:16px;padding:36px 32px;flex:1;min-width:260px;max-width:320px;cursor:pointer;transition:border-color 0.2s,box-shadow 0.2s,transform 0.15s;text-align:center;}
+.mode-card:hover{border-color:#4f46e5;box-shadow:0 8px 32px rgba(79,70,229,0.12);transform:translateY(-2px);}
+.mode-card.onetimeview:hover{border-color:#059669;box-shadow:0 8px 32px rgba(5,150,105,0.12);}
+.mode-icon{font-size:40px;margin-bottom:16px;line-height:1;}
+.mode-card-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#111;margin-bottom:8px;}
+.mode-card-desc{font-size:11px;color:#888;line-height:1.7;}
+.mode-card-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;border-radius:20px;margin-top:12px;}
+.mode-card.database .mode-card-badge{background:#ede9fe;color:#5b21b6;}
+.mode-card.onetimeview .mode-card-badge{background:#d1fae5;color:#065f46;}
+
+/* UPLOAD (ONE-TIME) */
+.upload-screen{min-height:calc(100vh - 51px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:16px;}
+.upload-card{background:#fff;border-radius:16px;border:2px dashed #d1d5db;padding:48px 56px;text-align:center;max-width:640px;width:100%;transition:border-color 0.2s,background 0.2s;cursor:pointer;position:relative;}
+.upload-card.drag-over{border-color:#818cf8;background:#f5f3ff;}
+.upload-icon{font-size:48px;margin-bottom:16px;line-height:1;}
+.upload-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#111;margin-bottom:8px;}
+.upload-sub{font-size:12px;color:#888;line-height:1.8;margin-bottom:24px;}
+.upload-sub b{color:#555;}
+.file-input-hidden{display:none;}
+.browse-btn{display:inline-block;padding:9px 22px;background:#0a0a14;color:#fff;border-radius:8px;font-size:12px;font-weight:600;letter-spacing:0.04em;cursor:pointer;}
+.days-row{max-width:640px;width:100%;}
+.days-box{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:14px 20px;display:flex;align-items:center;gap:12px;}
+.days-box label{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;}
+.days-input{border:none;outline:none;font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:#111;width:80px;background:transparent;}
+.days-input::placeholder{color:#ccc;}
+.days-auto-label{font-size:11px;color:#818cf8;font-weight:500;white-space:nowrap;margin-left:auto;}
+.days-note{font-size:11px;color:#818cf8;background:#f5f3ff;border:1px solid #c7d2fe;border-radius:6px;padding:8px 14px;max-width:640px;width:100%;display:none;}
+.file-list{max-width:640px;width:100%;display:flex;flex-direction:column;gap:6px;}
+.file-chip{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:12px;}
+.fc-type{font-size:10px;font-weight:700;letter-spacing:0.08em;padding:2px 8px;border-radius:20px;color:#fff;text-transform:uppercase;flex-shrink:0;}
+.fc-type.sales{background:#10b981;}.fc-type.returns{background:#f59e0b;}.fc-type.inventory{background:#6366f1;}.fc-type.unknown{background:#ef4444;}
+.fc-type.itemmaster{background:#7c3aed;}.fc-type.catalogue{background:#0891b2;}
+.fc-name{color:#555;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fc-rows{font-family:'DM Mono',monospace;font-size:10px;color:#aaa;white-space:nowrap;}
+.fc-remove{margin-left:auto;background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;line-height:1;padding:2px 4px;flex-shrink:0;}
+.fc-remove:hover{color:#ef4444;}
+.error-box{max-width:640px;width:100%;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;border-radius:8px;padding:12px 16px;display:none;}
+.error-box .err-title{font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;}
+.error-box .err-item{font-size:12px;color:#7f1d1d;line-height:1.7;}
+.go-btn{padding:12px 36px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.04em;transition:opacity 0.2s;}
+.go-btn:hover{opacity:0.88;}.go-btn:disabled{opacity:0.35;cursor:not-allowed;}
+
+/* TIER EDITOR */
+.tier-editor-wrap{max-width:640px;width:100%;}
+.tier-editor-toggle{background:none;border:1px solid #e5e7eb;border-radius:8px;padding:8px 16px;font-size:11px;font-weight:600;color:#888;cursor:pointer;width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;}
+.tier-editor-toggle:hover{border-color:#4f46e5;color:#4f46e5;}
+.tier-editor-body{background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:14px 16px;display:none;}
+.tier-editor-body.open{display:block;}
+.tier-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px;}
+.tier-row label{width:80px;font-weight:600;}
+.tier-row span{color:#aaa;font-size:11px;width:20px;text-align:center;}
+.tier-row input{border:1px solid #e5e7eb;border-radius:6px;padding:4px 8px;font-family:'DM Mono',monospace;font-size:12px;width:70px;outline:none;}
+.tier-row input:focus{border-color:#4f46e5;}
+.tier-reset-btn{font-size:11px;color:#aaa;background:none;border:none;cursor:pointer;text-decoration:underline;margin-top:4px;}
+.tier-reset-btn:hover{color:#4f46e5;}
+.tier-info-edit-btn{font-size:10px;color:#4f46e5;background:none;border:1px solid #c7d2fe;border-radius:5px;padding:2px 8px;cursor:pointer;flex-shrink:0;}
+.tier-info-edit-btn:hover{background:#ede9fe;}
+.tier-edit-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11px;}
+.tier-edit-row label{min-width:88px;font-weight:600;}
+.tier-edit-row input{border:1px solid #e5e7eb;border-radius:5px;padding:3px 6px;font-family:'DM Mono',monospace;font-size:11px;width:56px;outline:none;}
+.tier-edit-row input:focus{border-color:#4f46e5;}
+.tier-info-save-btn{flex:1;background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;}
+.tier-info-save-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.tier-info-cancel-btn{flex:1;background:#f4f4f5;color:#555;border:1px solid #e5e7eb;border-radius:6px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;}
+
+/* DASHBOARD SHELL */
+#dashboard{display:none;}
+.dash-header{background:#fff;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:1px solid #e5e7eb;}
+.dash-title{font-family:'Playfair Display',serif;font-size:20px;color:#111;font-weight:700;}
+.dash-meta{font-size:11px;color:#aaa;margin-top:3px;}
+.dash-meta span{color:#4f46e5;}
+.reset-btn{font-size:11px;font-weight:600;color:#888;background:none;border:1px solid #e5e7eb;border-radius:6px;padding:6px 14px;cursor:pointer;}
+.reset-btn:hover{color:#111;border-color:#aaa;}
+
+/* MAIN TABS */
+.main-tabs{background:#fff;padding:0 32px;display:flex;gap:0;border-bottom:1px solid #e5e7eb;overflow-x:auto;}
+.mtab{padding:13px 18px;font-size:11px;font-weight:600;color:#aaa;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:color 0.2s,border-color 0.2s;}
+.mtab:hover{color:#555;}
+.mtab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+
+/* KPI STRIP */
+.kpi-strip{background:#fff;border-bottom:1px solid #e5e7eb;padding:16px 32px;display:flex;gap:12px;flex-wrap:wrap;}
+.kpi-card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px 18px;min-width:110px;}
+.kpi-val{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;line-height:1.1;color:#111;}
+.kpi-lbl{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-top:3px;}
+.kpi-card.c-indigo .kpi-val{color:#4f46e5;}.kpi-card.c-green .kpi-val{color:#059669;}
+.kpi-card.c-amber .kpi-val{color:#d97706;}.kpi-card.c-rose .kpi-val{color:#e11d48;}
+.kpi-card.c-purple .kpi-val{color:#7c3aed;}.kpi-card.c-blue .kpi-val{color:#2563eb;}
+.kpi-card.c-teal .kpi-val{color:#0891b2;}.kpi-card.c-orange .kpi-val{color:#ea580c;}
+
+/* SECTION */
+.section{padding:20px 32px;}
+.section-title{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px;}
+
+/* CHART GRID */
+.chart-grid{display:grid;gap:16px;margin-bottom:20px;}
+.chart-grid.cols2{grid-template-columns:1fr 1fr;}
+.chart-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.chart-card-title{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:12px;}
+.chart-wrap{position:relative;height:220px;}
+.pie-wrap{position:relative;height:200px;}
+
+/* BRAND OVERVIEW CARDS */
+.brand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:20px;}
+.brand-ov-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.boc-name{font-size:12px;font-weight:700;color:#111;margin-bottom:8px;}
+.boc-row{display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:3px;}
+.boc-val{font-family:'DM Mono',monospace;font-size:11px;color:#111;font-weight:500;}
+
+/* FILTER BAR */
+.filter-bar{background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 32px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.filter-label{font-size:10px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:0.08em;margin-right:2px;white-space:nowrap;}
+.brand-pill{padding:5px 12px;border-radius:20px;border:1px solid #e5e7eb;background:#fff;font-size:11px;font-weight:500;color:#777;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.brand-pill:hover{border-color:#818cf8;color:#4f46e5;}
+.brand-pill.active{background:#4f46e5;border-color:#4f46e5;color:#fff;font-weight:600;}
+.bp-sangria.active,.bp-sangriaxfwd.active{background:#db2777;border-color:#db2777;}
+.bp-hop.active,.bp-ode.active{background:#b45309;border-color:#b45309;}
+.bp-aay.active,.bp-routes.active{background:#2563eb;border-color:#2563eb;}
+.bp-anouk.active,.bp-anoukrustic.active{background:#c2510e;border-color:#c2510e;}
+.bp-dressberry.active{background:#0891b2;border-color:#0891b2;}
+.filter-sep{width:1px;height:18px;background:#e5e7eb;margin:0 4px;flex-shrink:0;}
+.tier-filter-wrap{display:flex;gap:6px;align-items:center;}
+.tier-pill{padding:4px 10px;border-radius:20px;border:1px solid #e5e7eb;background:#fff;font-size:10px;font-weight:700;color:#777;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em;}
+.tier-pill.active.t-ALL{background:#475569;border-color:#475569;color:#fff;}
+.tier-pill.active.t-VF{background:#7c3aed;border-color:#7c3aed;color:#fff;}
+.tier-pill.active.t-F{background:#059669;border-color:#059669;color:#fff;}
+.tier-pill.active.t-M{background:#2563eb;border-color:#2563eb;color:#fff;}
+.tier-pill.active.t-S{background:#d97706;border-color:#d97706;color:#fff;}
+.tier-pill.active.t-D{background:#dc2626;border-color:#dc2626;color:#fff;}
+.sort-group{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;}
+.sort-select{border:1px solid #e5e7eb;border-radius:6px;padding:4px 10px;font-size:11px;font-family:'DM Sans',sans-serif;color:#555;background:#fff;cursor:pointer;outline:none;}
+.cat-select{border:1px solid #bae6fd;border-radius:6px;padding:4px 10px;font-size:11px;font-family:'DM Sans',sans-serif;color:#0891b2;background:#f0f9ff;cursor:pointer;outline:none;font-weight:600;}
+
+/* TABLE */
+.table-wrap{padding:0 32px 24px;}
+.row-count{font-size:11px;color:#aaa;margin-bottom:8px;}
+.tw{overflow-x:auto;background:#fff;border-radius:10px;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.tw table{width:100%;border-collapse:collapse;min-width:800px;}
+thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#999;border-bottom:1px solid #f0f0f0;background:#fafafa;white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{color:#4f46e5;}
+tbody tr{border-bottom:1px solid #f8f8f8;transition:background 0.1s;}
+tbody tr:hover{background:#fafbff;}
+tbody td{padding:8px 12px;font-size:12px;vertical-align:middle;}
+.sid-link{font-family:'DM Mono',monospace;font-size:11px;color:#4f46e5;text-decoration:none;border-bottom:1px dashed #c7d2fe;}
+.sid-link:hover{color:#3730a3;}
+.mono{font-family:'DM Mono',monospace;font-size:11px;}
+.na{color:#ddd;font-size:11px;}
+.zero{font-family:'DM Mono',monospace;font-size:11px;color:#ddd;}
+.sku-drill-btn{background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;color:#7c3aed;padding:2px 6px;border-radius:5px;border:1px dashed #ddd6fe;text-align:left;transition:all 0.15s;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+.sku-drill-btn:hover{background:#f5f3ff;border-color:#7c3aed;}
+
+/* BRAND TAGS */
+.brand-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:12px;white-space:nowrap;}
+.bt-sangria{background:#fce7f3;color:#9d174d;}.bt-sangriaxfwd{background:#fce7f3;color:#9d174d;}
+.bt-hop{background:#fef3c7;color:#92400e;}.bt-ode{background:#fef3c7;color:#92400e;}
+.bt-aay{background:#dbeafe;color:#1e40af;}.bt-routes{background:#dbeafe;color:#1e40af;}
+.bt-anouk{background:#ffedd5;color:#9a3412;}.bt-anoukrustic{background:#ffedd5;color:#9a3412;}
+.bt-dressberry{background:#e0f2fe;color:#0c4a6e;}.bt-other{background:#f1f5f9;color:#475569;}
+
+/* TIER BADGES */
+.tier-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;letter-spacing:0.04em;}
+.tb-VF{background:#ede9fe;color:#5b21b6;}.tb-F{background:#d1fae5;color:#065f46;}
+.tb-M{background:#dbeafe;color:#1e40af;}.tb-S{background:#fef3c7;color:#92400e;}
+.tb-D{background:#fee2e2;color:#991b1b;}
+.ret-high{color:#dc2626;font-weight:600;}.ret-mid{color:#d97706;font-weight:600;}.ret-low{color:#059669;font-weight:600;}
+.cat-date{font-family:'DM Mono',monospace;font-size:10px;color:#0891b2;background:#f0f9ff;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+
+/* RETURN REASON */
+.ret-reason-btn{background:none;border:none;padding:0;cursor:pointer;font-size:10px;color:#7c3aed;font-family:'DM Sans',sans-serif;font-weight:600;text-align:left;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+.ret-reason-btn:hover{text-decoration:underline;}
+.ret-reason-pct{font-size:9px;color:#aaa;font-weight:400;margin-left:3px;}
+/* REASONS POPUP */
+.reasons-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3500;display:none;align-items:center;justify-content:center;padding:20px;}
+.reasons-overlay.open{display:flex;}
+.reasons-modal{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.2);width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;}
+.reasons-modal-head{padding:18px 20px 14px;border-bottom:1px solid #f0f0f0;flex-shrink:0;}
+.reasons-modal-title{font-size:13px;font-weight:700;color:#111;}
+.reasons-modal-sub{font-size:11px;color:#aaa;margin-top:2px;}
+.reasons-modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1;}
+.reasons-modal-body{overflow-y:auto;flex:1;padding:14px 20px;}
+.reasons-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;}
+.reasons-row:last-child{border-bottom:none;}
+.reasons-label{flex:1;font-size:11px;color:#333;font-weight:500;}
+.reasons-bar-wrap{width:100px;height:6px;background:#f0f0f0;border-radius:3px;flex-shrink:0;}
+.reasons-bar{height:6px;background:#7c3aed;border-radius:3px;}
+.reasons-count{font-size:11px;font-family:'DM Mono',monospace;color:#555;width:28px;text-align:right;flex-shrink:0;}
+.reasons-pct{font-size:10px;color:#aaa;width:38px;text-align:right;flex-shrink:0;}
+/* STYLE SUB-TABS */
+.style-subtab-bar{padding:10px 32px 0;display:flex;gap:6px;}
+.style-subtab{padding:5px 16px;border-radius:20px;border:1px solid #e5e7eb;background:#fff;font-size:11px;font-weight:500;color:#777;cursor:pointer;transition:all 0.15s;}
+.style-subtab.active{background:#818cf8;border-color:#818cf8;color:#fff;font-weight:600;}
+/* SKU MODAL */
+.sku-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;}
+.sku-overlay.open{display:flex;}
+.sku-modal{background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.18);width:100%;max-width:1400px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.sku-modal-head{padding:20px 24px 16px;border-bottom:1px solid #f0f0f0;flex-shrink:0;}
+.sku-modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#bbb;line-height:1;padding:4px;}
+.sku-modal-close:hover{color:#111;}
+.sku-modal-sid{font-family:'DM Mono',monospace;font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:4px;}
+.sku-modal-name{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:#111;margin-bottom:6px;padding-right:32px;}
+.sku-modal-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.sku-modal-kpis{display:flex;gap:10px;flex-wrap:wrap;padding:14px 24px;background:#fafafa;border-bottom:1px solid #f0f0f0;flex-shrink:0;}
+.smk{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:9px 14px;min-width:90px;}
+.smk-val{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#111;line-height:1;}
+.smk-lbl{font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;}
+.smk.c-indigo .smk-val{color:#4f46e5;}.smk.c-green .smk-val{color:#059669;}
+.smk.c-orange .smk-val{color:#ea580c;}.smk.c-teal .smk-val{color:#0891b2;}
+.smk.c-amber .smk-val{color:#d97706;}.smk.c-rose .smk-val{color:#e11d48;}
+.sku-modal-body{overflow-y:auto;flex:1;padding:16px 24px;}
+.sku-modal-section-title{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+.sku-tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid #e5e7eb;}
+.sku-tbl{width:100%;border-collapse:collapse;min-width:560px;}
+.sku-tbl thead th{padding:8px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#999;border-bottom:1px solid #f0f0f0;background:#fafafa;white-space:nowrap;}
+.sku-tbl tbody tr{border-bottom:1px solid #f8f8f8;}
+.sku-tbl tbody tr:hover{background:#f8f7ff;}
+.sku-tbl tbody td{padding:8px 12px;font-size:11px;vertical-align:middle;}
+.ls-active{color:#059669;font-weight:600;font-size:10px;}
+.ls-inactive{color:#ef4444;font-weight:600;font-size:10px;}
+.ls-other{color:#888;font-size:10px;}
+.size-badge{font-family:'DM Mono',monospace;font-size:10px;font-weight:700;background:#f1f5f9;color:#475569;padding:2px 7px;border-radius:6px;}
+
+/* ── DB SCREEN ─────────────────────────────────────────── */
+#dbScreen{display:none;}
+#dbStickyHeader{background:#fff;}
+#dbContentArea{}
+.db-fy-bar{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 28px;display:flex;align-items:center;gap:0;}
+.fy-tab{padding:13px 16px;font-size:11px;font-weight:600;color:#aaa;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:color 0.2s,border-color 0.2s;}
+.fy-tab:hover{color:#555;}
+.fy-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+.fy-tab.compare-tab.active{color:#0891b2;border-bottom-color:#0891b2;}
+.db-add-btn{margin-left:auto;padding:7px 18px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.04em;}
+.db-add-btn:hover{opacity:0.88;}
+
+/* MONTH TIMELINE */
+.month-timeline{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 28px;display:flex;align-items:flex-start;gap:6px;overflow-x:auto;}
+.mt-month{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;min-width:44px;}
+.mt-dot{width:28px;height:28px;border-radius:50%;border:2px solid #e5e7eb;background:#f8fafc;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all 0.15s;position:relative;}
+.mt-dot.has-sales{border-color:#10b981;background:#d1fae5;color:#065f46;}
+.mt-dot.has-sales.pending{border-color:#f59e0b;background:#fef3c7;color:#92400e;}
+.mt-dot.has-sales.no-returns{border-color:#6366f1;background:#e0e7ff;color:#3730a3;}
+.mt-dot.selected{box-shadow:0 0 0 3px rgba(79,70,229,0.25);}
+.mt-dot:hover{border-color:#4f46e5;}
+.mt-label{font-size:9px;font-weight:600;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;}
+.mt-month.selected .mt-label{color:#4f46e5;}
+.mt-ret-dot{width:6px;height:6px;border-radius:50%;position:absolute;bottom:-1px;right:-1px;}
+.mt-ret-dot.frozen{background:#059669;}
+.mt-ret-dot.pending{background:#f59e0b;}
+.mt-legend{display:flex;gap:12px;margin-left:auto;flex-shrink:0;align-items:center;}
+.mt-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#888;}
+.mt-legend-dot{width:10px;height:10px;border-radius:50%;}
+.full-fy-btn{padding:5px 13px;border:1px solid #e5e7eb;border-radius:20px;font-size:10px;font-weight:600;color:#4f46e5;background:#f5f3ff;cursor:pointer;white-space:nowrap;transition:all 0.15s;flex-shrink:0;margin-left:8px;align-self:center;}
+.full-fy-btn:hover{background:#ede9fe;border-color:#818cf8;}
+.full-fy-btn.active{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+
+/* DB CONTENT TABS */
+.db-tabs{background:#fff;padding:0 28px;display:flex;gap:0;border-bottom:1px solid #e5e7eb;}
+.db-tab{padding:12px 16px;font-size:11px;font-weight:600;color:#aaa;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:color 0.2s,border-color 0.2s;}
+.db-tab:hover{color:#555;}
+
+/* SEARCH BAR */
+.search-wrap{padding:10px 28px 0;display:flex;align-items:center;gap:8px;}
+.search-input{flex:1;max-width:360px;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px 7px 32px;font-family:'DM Sans',sans-serif;font-size:12px;color:#111;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 10px center;outline:none;transition:border-color 0.15s;}
+.search-input:focus{border-color:#818cf8;}
+.db-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+.db-tab-panel{display:none;}.db-tab-panel.active{display:block;}
+
+/* DB LOADING */
+.db-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:16px;text-align:center;}
+.db-spinner{width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#4f46e5;border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.db-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:16px;text-align:center;}
+.db-empty-icon{font-size:48px;}
+.db-empty-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#111;}
+.db-empty-sub{font-size:12px;color:#888;max-width:380px;line-height:1.7;}
+
+/* FROZEN / PENDING BADGES */
+.badge-frozen{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;padding:2px 8px;border-radius:20px;background:#d1fae5;color:#065f46;}
+.badge-pending{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;padding:2px 8px;border-radius:20px;background:#fef3c7;color:#92400e;}
+.badge-nosales{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;padding:2px 8px;border-radius:20px;background:#f1f5f9;color:#64748b;}
+
+/* COMPARE */
+.compare-sub-tabs{display:flex;gap:0;padding:0 28px;background:#fafafa;border-bottom:1px solid #e5e7eb;}
+.compare-sub-btn{padding:10px 18px;font-size:11px;font-weight:600;color:#aaa;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color 0.2s,border-color 0.2s;}
+.compare-sub-btn:hover{color:#555;}
+.compare-sub-btn.active{color:#0891b2;border-bottom-color:#0891b2;}
+.compare-header{padding:20px 28px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.compare-fy-select{border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;font-size:12px;font-family:'DM Sans',sans-serif;color:#555;background:#fff;cursor:pointer;outline:none;font-weight:600;}
+.compare-vs{font-size:13px;font-weight:700;color:#aaa;}
+.compare-note{font-size:11px;color:#888;background:#f8fafc;border-radius:6px;padding:6px 12px;border:1px solid #e5e7eb;}
+.compare-kpi-row{display:flex;gap:12px;flex-wrap:wrap;padding:16px 28px;background:#fff;border-bottom:1px solid #e5e7eb;}
+.compare-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;min-width:130px;flex:1;}
+.compare-kpi-label{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+.compare-kpi-vals{display:flex;gap:8px;align-items:flex-end;}
+.compare-kpi-a{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#6366f1;}
+.compare-kpi-b{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#f59e0b;}
+.compare-delta{font-size:11px;font-weight:600;padding:2px 6px;border-radius:5px;margin-left:auto;align-self:center;}
+.delta-up{background:#d1fae5;color:#065f46;}
+.delta-down{background:#fee2e2;color:#991b1b;}
+.delta-neutral{background:#f1f5f9;color:#64748b;}
+.compare-month-table{padding:16px 28px;}
+.cmt-head{display:flex;gap:0;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px 8px 0 0;border-bottom:1px solid #e5e7eb;}
+.cmt-head div{padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#999;flex:1;}
+.cmt-row{display:flex;background:#fff;border:1px solid #e5e7eb;border-top:none;}
+.cmt-row:last-child{border-radius:0 0 8px 8px;}
+.cmt-row div{padding:9px 12px;font-size:12px;flex:1;font-family:'DM Mono',monospace;}
+.cmt-month{font-weight:600;color:#555;font-family:'DM Sans',sans-serif!important;font-size:11px!important;}
+
+/* DB MANAGE */
+.db-manage-btn{margin-left:8px;padding:7px 14px;background:#f4f4f5;border:1px solid #e5e7eb;border-radius:7px;font-size:11px;font-weight:700;color:#555;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap;}
+.db-manage-btn:hover{background:#e5e7eb;color:#111;}
+.db-manage-btn.active{background:#111;color:#fff;border-color:#111;}
+.mgmt-channel-tabs{display:flex;gap:0;border-bottom:1px solid #e5e7eb;background:#fff;padding:0 28px;}
+.mgmt-channel-tab{padding:12px 20px;font-size:11px;font-weight:700;color:#aaa;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color 0.2s,border-color 0.2s;}
+.mgmt-channel-tab:hover{color:#555;}
+.mgmt-channel-tab.active{color:#111;border-bottom-color:#111;}
+.mgmt-body{padding:20px 28px;}
+.mgmt-fy-section{margin-bottom:24px;}
+.mgmt-fy-header{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.08em;padding-bottom:8px;border-bottom:1px solid #f3f4f6;margin-bottom:10px;}
+.mgmt-list{display:flex;flex-direction:column;gap:6px;}
+.mgmt-item{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;}
+.mgmt-item-label{font-size:12px;font-weight:600;color:#111;min-width:110px;}
+.mgmt-item-meta{font-size:11px;color:#999;flex:1;}
+.mgmt-item-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;}
+.badge-frozen{background:#ecfdf5;color:#059669;}
+.badge-pending{background:#fff7ed;color:#d97706;}
+.dmi-del{background:none;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.dmi-del:hover{background:#fef2f2;}
+.mgmt-master-section{margin-bottom:24px;}
+.db-manage-title{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+.db-manage-list{display:flex;flex-direction:column;gap:6px;margin-bottom:0;}
+.db-manage-item{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;}
+.dmi-label{font-size:12px;font-weight:600;color:#111;flex:1;}
+.dmi-meta{font-size:11px;color:#aaa;}
+.db-danger-zone{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin-top:24px;}
+.db-danger-title{font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px;}
+.db-danger-desc{font-size:11px;color:#7f1d1d;margin-bottom:12px;line-height:1.6;}
+.danger-btn{padding:8px 20px;background:#dc2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.04em;}
+.danger-btn:hover{background:#b91c1c;}
+
+/* PASSWORD MODAL */
+.pw-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:none;align-items:center;justify-content:center;padding:20px;}
+.pw-overlay.open{display:flex;}
+.pw-modal{background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.2);width:100%;max-width:360px;padding:28px;}
+.pw-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#111;margin-bottom:6px;}
+.pw-sub{font-size:11px;color:#888;margin-bottom:18px;}
+.pw-input{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:14px;outline:none;margin-bottom:8px;transition:border-color 0.15s;}
+.pw-input:focus{border-color:#4f46e5;}
+.pw-input.error{border-color:#ef4444;animation:shake 0.3s ease;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+.pw-err{font-size:11px;color:#dc2626;margin-bottom:12px;display:none;}
+.pw-btns{display:flex;gap:8px;justify-content:flex-end;}
+.pw-cancel{background:none;border:1px solid #e5e7eb;border-radius:7px;padding:8px 16px;font-size:11px;font-weight:600;color:#888;cursor:pointer;}
+.pw-cancel:hover{border-color:#aaa;color:#111;}
+.pw-confirm{background:#4f46e5;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:11px;font-weight:600;cursor:pointer;}
+.pw-confirm:hover{opacity:0.88;}
+
+/* 3-LAYER CONFIRM MODAL */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3100;display:none;align-items:center;justify-content:center;padding:20px;}
+.confirm-overlay.open{display:flex;}
+.confirm-modal{background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.22);width:100%;max-width:420px;overflow:hidden;}
+.confirm-header{background:#fef2f2;padding:16px 20px;border-bottom:1px solid #fecaca;}
+.confirm-step-badge{font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.07em;}
+.confirm-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#111;margin-top:4px;}
+.confirm-body{padding:20px;}
+.confirm-text{font-size:12px;color:#555;line-height:1.7;margin-bottom:16px;}
+.confirm-input-wrap{margin-bottom:16px;}
+.confirm-input-label{font-size:11px;font-weight:600;color:#555;margin-bottom:6px;display:block;}
+.confirm-input{width:100%;border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color 0.15s;}
+.confirm-input:focus{border-color:#dc2626;}
+.confirm-input.error{border-color:#ef4444;animation:shake 0.3s ease;}
+.confirm-step-dots{display:flex;gap:5px;margin-bottom:14px;}
+.confirm-step-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;}
+.confirm-step-dot.active{background:#dc2626;}
+.confirm-step-dot.done{background:#10b981;}
+.confirm-btns{display:flex;gap:8px;justify-content:flex-end;}
+.confirm-cancel-btn{background:none;border:1px solid #e5e7eb;border-radius:7px;padding:8px 16px;font-size:11px;font-weight:600;color:#888;cursor:pointer;}
+.confirm-cancel-btn:hover{border-color:#aaa;color:#111;}
+.confirm-next-btn{background:#dc2626;color:#fff;border:none;border-radius:7px;padding:8px 18px;font-size:11px;font-weight:600;cursor:pointer;}
+.confirm-next-btn:hover{background:#b91c1c;}
+
+/* DB UPLOAD MODAL */
+.dbup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:none;align-items:center;justify-content:center;padding:20px;}
+.dbup-overlay.open{display:flex;}
+.dbup-modal{background:#fff;border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.2);width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+.dbup-header{padding:20px 24px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.dbup-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#111;}
+.dbup-close{background:none;border:none;font-size:22px;cursor:pointer;color:#bbb;line-height:1;padding:4px;}
+.dbup-close:hover{color:#111;}
+.dbup-body{padding:20px 24px;overflow-y:auto;flex:1;}
+.dbup-drop{border:2px dashed #d1d5db;border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-bottom:16px;}
+.dbup-drop.drag-over{border-color:#818cf8;background:#f5f3ff;}
+.dbup-drop-icon{font-size:32px;margin-bottom:10px;}
+.dbup-drop-text{font-size:12px;color:#888;margin-bottom:12px;}
+.dbup-browse{display:inline-block;padding:7px 18px;background:#0a0a14;color:#fff;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;}
+.dbup-preview{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:16px;display:none;}
+.dbup-preview-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4f46e5;margin-bottom:8px;}
+.dbup-preview-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#555;margin-bottom:5px;}
+.dbup-preview-val{font-family:'DM Mono',monospace;font-size:11px;color:#111;font-weight:500;}
+.dbup-status-ok{color:#059669;font-size:11px;font-weight:600;}
+.dbup-status-warn{color:#d97706;font-size:11px;font-weight:600;}
+.dbup-status-err{color:#dc2626;font-size:11px;font-weight:600;}
+.dbup-pw-row{display:flex;gap:8px;align-items:center;margin-bottom:4px;}
+.dbup-pw-input{flex:1;border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-family:'DM Mono',monospace;font-size:13px;outline:none;}
+.dbup-pw-input:focus{border-color:#4f46e5;}
+.dbup-pw-input.error{border-color:#ef4444;}
+.dbup-footer{padding:16px 24px;border-top:1px solid #f0f0f0;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;}
+.dbup-save-btn{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:12px;font-weight:600;cursor:pointer;}
+.dbup-save-btn:hover{opacity:0.88;}
+.dbup-save-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.dbup-cancel-btn{background:none;border:1px solid #e5e7eb;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:600;color:#888;cursor:pointer;}
+.dbup-cancel-btn:hover{border-color:#aaa;color:#111;}
+.dbup-success{text-align:center;padding:24px;display:none;}
+.dbup-success-icon{font-size:40px;margin-bottom:12px;}
+.dbup-success-text{font-size:13px;color:#059669;font-weight:600;}
+.dbup-file-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.dbup-file-card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:11px 14px;transition:border-color 0.2s,background 0.2s;}
+.dbup-file-card.blocked{border-color:#fecaca;background:#fff9f9;}
+.dbup-file-card.saved{border-color:#a7f3d0;background:#f0fdf4;}
+.dbup-file-card.saving{border-color:#bfdbfe;background:#eff6ff;}
+.dbup-fc-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.dbup-fc-title{font-size:12px;font-weight:600;color:#111;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dbup-fc-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;flex-shrink:0;}
+.dbup-fc-badge.ok{background:#dcfce7;color:#15803d;}
+.dbup-fc-badge.warn{background:#fef3c7;color:#b45309;}
+.dbup-fc-badge.err{background:#fee2e2;color:#dc2626;}
+.dbup-fc-badge.saving{background:#dbeafe;color:#2563eb;}
+.dbup-fc-desc{font-size:11px;color:#888;line-height:1.5;}
+.dbup-add-more{font-size:11px;color:#4f46e5;background:none;border:none;cursor:pointer;font-weight:600;padding:0;margin-bottom:14px;display:block;}
+
+/* MANAGE FILES OVERLAY */
+.mgr-drop-zone{border:2px dashed #d1d5db;border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-top:4px;}
+.mgr-drop-zone.drag-over{border-color:#818cf8;background:#f5f3ff;}
+.dash-mgr-btn{font-size:11px;font-weight:600;color:#555;background:#f4f4f5;border:1px solid #e5e7eb;border-radius:6px;padding:6px 14px;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+.dash-mgr-btn:hover{background:#e5e7eb;color:#111;}
+.dash-mgr-btn.add{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-color:transparent;}
+.dash-mgr-btn.add:hover{opacity:0.88;}
+
+/* MANAGE DB SUB-TABS + BULK DELETE */
+.mgmt-bulk-zone{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;}
+.mgmt-bulk-title{font-size:12px;font-weight:700;color:#991b1b;margin-bottom:2px;}
+.mgmt-bulk-desc{font-size:11px;color:#9f1239;line-height:1.5;}
+.mgmt-bulk-btn{background:#dc2626;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.mgmt-bulk-btn:hover{background:#b91c1c;}
+.mgmt-sub-tabs{display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:16px;}
+.mgmt-sub-tab{padding:9px 18px;font-size:11px;font-weight:600;color:#aaa;background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color 0.2s,border-color 0.2s;}
+.mgmt-sub-tab:hover{color:#555;}
+.mgmt-sub-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+.mgmt-sub-bulk{margin-bottom:14px;}
+.mgmt-sub-bulk-btn{background:none;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:5px 12px;font-size:10px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.mgmt-sub-bulk-btn:hover{background:#fef2f2;}
+
+@media(max-width:700px){
+  .chart-grid.cols2{grid-template-columns:1fr;}
+  .upload-card{padding:32px 20px;}
+  .section{padding:14px 16px;}
+  .filter-bar{padding:10px 16px;}
+  .table-wrap{padding:0 16px 20px;}
+  .kpi-strip{padding:12px 16px;}
+  .dash-header{padding:14px 16px;}
+  .main-tabs{padding:0 16px;}
+  .mode-cards{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tlogo">UTM <span>×</span> Myntra</div>
+  <div class="tstatus" id="topStatus">Select a mode to get started</div>
+  <button class="tback-btn" id="backToModeBtn" style="display:none;">← Change Mode</button>
+</div>
+
+<!-- MODE SELECTION SCREEN -->
+<div id="modeScreen">
+  <div class="mode-screen">
+    <div class="mode-title">Myntra Dashboard</div>
+    <div class="mode-sub">Choose how you want to work with your data today</div>
+    <div class="mode-cards">
+      <div class="mode-card onetimeview" id="modeOneTime">
+        <div class="mode-icon">📂</div>
+        <div class="mode-card-title">One-Time View</div>
+        <div class="mode-card-desc">Drop files and get instant insights. Data is not saved anywhere — perfect for quick analysis of any date range.</div>
+        <div class="mode-card-badge">Session only</div>
+      </div>
+      <div class="mode-card database" id="modeDatabase">
+        <div class="mode-icon">📁</div>
+        <div class="mode-card-title">GitHub Data</div>
+        <div class="mode-card-desc">Load all data files from the connected GitHub repo. Drop your CSVs in the data/ folder, push, and the dashboard builds itself.</div>
+        <div class="mode-card-badge">GitHub powered</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ONE-TIME UPLOAD SCREEN -->
+<div class="upload-screen" id="uploadScreen" style="display:none;">
+  <div class="error-box" id="errorBox"><div class="err-title">⚠ Issues found</div><div id="errorList"></div></div>
+  <div class="days-row">
+    <div class="days-box">
+      <label>Number of Days</label>
+      <input class="days-input" type="number" id="daysInput" placeholder="auto" min="1" max="9999">
+      <span class="days-auto-label" id="daysAutoLabel"></span>
+    </div>
+  </div>
+  <div class="days-note" id="daysNote"></div>
+  <div class="upload-card" id="dropZone">
+    <input type="file" class="file-input-hidden" id="fileInput" accept=".csv" multiple>
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">Drop your Myntra export files here</div>
+    <div class="upload-sub">
+      Required: <b>Sales</b> CSV &nbsp;·&nbsp; Optional: <b>Returns</b>, <b>Inventory</b> CSVs<br>
+      For cost data: <b>Item Master</b> CSV (Uniware) &nbsp;·&nbsp; For catalogue dates: <b>Listings Report</b> CSV<br>
+      Drop as many files as needed — all months at once is fine.
+    </div>
+    <label for="fileInput" class="browse-btn" style="cursor:pointer;">Browse files</label>
+  </div>
+  <div class="file-list" id="fileList"></div>
+  <div class="tier-editor-wrap">
+    <button class="tier-editor-toggle" id="tierEditorToggle">⚙ ROS Tier Thresholds <span id="tierToggleArrow">▾</span></button>
+    <div class="tier-editor-body" id="tierEditorBody">
+      <div style="font-size:11px;color:#aaa;margin-bottom:10px;">Tiers are assigned based on ROS (units ÷ days). Edit the minimum ROS for each tier below.</div>
+      <div class="tier-row"><label style="color:#5b21b6;">VF (Very Fast)</label><span>≥</span><input type="number" id="te-VF" value="1.5" step="0.1" min="0"><span style="font-size:10px;color:#aaa;">ROS/day</span></div>
+      <div class="tier-row"><label style="color:#065f46;">F (Fast)</label><span>≥</span><input type="number" id="te-F" value="0.7" step="0.1" min="0"></div>
+      <div class="tier-row"><label style="color:#1e40af;">M (Medium)</label><span>≥</span><input type="number" id="te-M" value="0.3" step="0.1" min="0"></div>
+      <div class="tier-row"><label style="color:#92400e;">S (Slow)</label><span>≥</span><input type="number" id="te-S" value="0.001" step="0.001" min="0"></div>
+      <div style="font-size:10px;color:#aaa;margin-top:2px;">D (Dead) = ROS of exactly 0 (no sales in the period)</div>
+      <button class="tier-reset-btn" id="tierResetBtn">Reset to defaults</button>
+    </div>
+  </div>
+  <button class="go-btn" id="goBtn" disabled>Build Dashboard →</button>
+</div>
+
+<!-- ONE-TIME DASHBOARD -->
+<div id="dashboard">
+  <div class="dash-header">
+    <div>
+      <div class="dash-title">Myntra Sales Dashboard</div>
+      <div class="dash-meta" id="dashMeta"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="dash-mgr-btn" id="dashManageFilesBtn">Manage Files</button>
+      <button class="dash-mgr-btn add" id="dashAddFilesBtn">+ Add Files</button>
+      <button class="reset-btn" id="resetBtn">← Load new files</button>
+    </div>
+  </div>
+  <div class="main-tabs">
+    <button class="mtab active" data-tab="overview">Overview</button>
+    <button class="mtab" data-tab="styles">Style Table</button>
+    <button class="mtab" data-tab="trends">Trends</button>
+  </div>
+  <div class="filter-bar" id="filterBar">
+    <span class="filter-label">Brand</span>
+    <div id="brandPills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Tier</span>
+    <div class="tier-filter-wrap" id="tierPills"></div>
+    <div style="position:relative;margin-left:4px;">
+      <button style="background:none;border:none;cursor:pointer;font-size:10px;color:#aaa;padding:2px 4px;" id="tierInfoBtn">ⓘ</button>
+      <div id="tierInfoBox" style="display:none;position:absolute;top:24px;left:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;z-index:999;width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.1);font-size:11px;">
+        <div id="tierInfoView">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+            <div style="font-weight:700;color:#111;">Tier Classification</div>
+            <button class="tier-info-edit-btn" id="tierInfoEditBtn">Edit</button>
+          </div>
+          <div style="color:#5b21b6;margin-bottom:3px;">VF — ROS ≥ <span id="li-VF">1.5</span>/day</div>
+          <div style="color:#065f46;margin-bottom:3px;">F &nbsp;— ROS ≥ <span id="li-F">0.7</span>/day</div>
+          <div style="color:#1e40af;margin-bottom:3px;">M — ROS ≥ <span id="li-M">0.3</span>/day</div>
+          <div style="color:#92400e;margin-bottom:3px;">S &nbsp;— ROS > 0/day</div>
+          <div style="color:#991b1b;">D &nbsp;— ROS = 0 (no sales)</div>
+        </div>
+        <div id="tierInfoEdit" style="display:none;">
+          <div style="font-weight:700;color:#111;margin-bottom:8px;">Edit Thresholds</div>
+          <div class="tier-edit-row"><label style="color:#5b21b6;">VF (Very Fast)</label><span style="color:#aaa;">≥</span><input type="number" id="ti-VF" step="0.1" min="0.01"></div>
+          <div class="tier-edit-row"><label style="color:#065f46;">F (Fast)</label><span style="color:#aaa;">≥</span><input type="number" id="ti-F" step="0.1" min="0.01"></div>
+          <div class="tier-edit-row"><label style="color:#1e40af;">M (Medium)</label><span style="color:#aaa;">≥</span><input type="number" id="ti-M" step="0.01" min="0.001"></div>
+          <div style="font-size:10px;color:#aaa;margin:2px 0 8px;">S = any ROS > 0 · D = ROS of 0</div>
+          <div id="tierInfoEditErr" style="font-size:10px;color:#dc2626;display:none;margin-bottom:6px;white-space:normal;"></div>
+          <div style="display:flex;gap:6px;">
+            <button class="tier-info-cancel-btn" id="tierInfoCancelBtn">Cancel</button>
+            <button class="tier-info-save-btn" id="tierInfoSaveBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-sep" id="catSep" style="display:none;"></div>
+    <span class="filter-label" id="catFilterLabel" style="display:none;">Catalogue Month</span>
+    <select class="cat-select" id="catMonthSelect" style="display:none;"><option value="All">All Months</option></select>
+    <div class="filter-sep" id="sortSep"></div>
+    <div class="sort-group" id="sortGroup">
+      <span class="filter-label">Sort</span>
+      <select class="sort-select" id="sortSelect">
+        <option value="units_desc">Units ↓</option>
+        <option value="units_asc">Units ↑</option>
+        <option value="revenue_desc">Revenue ↓</option>
+        <option value="revenue_asc">Revenue ↑</option>
+        <option value="ros_desc">ROS ↓</option>
+        <option value="ros_asc">ROS ↑</option>
+        <option value="returns_desc">Returns ↓</option>
+        <option value="retpct_desc">Return% ↓</option>
+        <option value="inv_desc">Inventory ↓</option>
+        <option value="doh_desc">Days on Hand ↓</option>
+        <option value="cost_desc">Total Cost ↓</option>
+        <option value="cost_asc">Total Cost ↑</option>
+        <option value="catdate_desc">Cat. Date Latest</option>
+        <option value="catdate_asc">Cat. Date Oldest</option>
+      </select>
+    </div>
+  </div>
+  <!-- OVERVIEW TAB -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="kpi-strip" id="kpiStrip"></div>
+    <!-- PIE CHARTS (top of overview) -->
+    <div class="section" id="pieSection">
+      <div class="section-title" id="pieSectionTitle">Brand Breakdown</div>
+      <div class="chart-grid cols2" id="pieGrid">
+        <div class="chart-card"><div class="chart-card-title" id="pie1Title">Brand-wise Sales (Units)</div><div class="pie-wrap"><canvas id="chartPie1"></canvas></div></div>
+        <div class="chart-card" id="pie2Card"><div class="chart-card-title" id="pie2Title">Brand-wise Inventory</div><div class="pie-wrap"><canvas id="chartPie2"></canvas></div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Performance Trend</div>
+      <div class="chart-grid cols2">
+        <div class="chart-card"><div class="chart-card-title">Units Sold</div><div class="chart-wrap"><canvas id="chartUnits"></canvas></div></div>
+        <div class="chart-card"><div class="chart-card-title">Revenue (₹)</div><div class="chart-wrap"><canvas id="chartRevenue"></canvas></div></div>
+      </div>
+    </div>
+    <div class="section" style="padding-top:0;">
+      <div class="section-title">Brand Performance</div>
+      <div class="chart-grid cols2">
+        <div class="chart-card"><div class="chart-card-title">Units by Brand</div><div class="chart-wrap"><canvas id="chartBrandUnits"></canvas></div></div>
+        <div class="chart-card"><div class="chart-card-title" id="retChartTitle" style="display:none;">Return % by Brand</div><div class="chart-wrap"><canvas id="chartBrandRet"></canvas></div></div>
+      </div>
+      <div class="brand-grid" id="brandOvGrid"></div>
+    </div>
+    <div class="section" style="padding-top:0;">
+      <div class="section-title">Article Type Breakdown</div>
+      <div class="chart-grid cols2" id="artTypeGrid">
+        <div class="chart-card"><div class="chart-card-title">Units by Article Type</div><div class="chart-wrap"><canvas id="chartArticle"></canvas></div></div>
+        <div class="chart-card" id="artRetCard" style="display:none;"><div class="chart-card-title">Return % by Article Type</div><div class="chart-wrap"><canvas id="chartArticleRet"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+  <!-- TRENDS TAB -->
+  <div class="tab-panel" id="tab-trends">
+    <div class="section" style="padding-top:24px;">
+      <div class="chart-grid cols2">
+        <div class="chart-card">
+          <div class="chart-card-title">Brand-wise Sales (Units)</div>
+          <div class="pie-wrap"><canvas id="chartTrendsBrand"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Article Type-wise Sales (Units)</div>
+          <div class="pie-wrap" style="cursor:pointer;"><canvas id="chartTrendsArt"></canvas></div>
+          <div style="font-size:10px;color:#aaa;text-align:center;margin-top:8px;">Click a slice to see size breakdown</div>
+        </div>
+      </div>
+      <div class="chart-grid cols2" id="trendsRetGrid" style="display:none;margin-top:0;">
+        <div class="chart-card">
+          <div class="chart-card-title">Brand-wise Returns (Units)</div>
+          <div class="pie-wrap" style="cursor:pointer;"><canvas id="chartTrendsBrandRet"></canvas></div>
+          <div style="font-size:10px;color:#aaa;text-align:center;margin-top:8px;">Click a slice to see return reasons</div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Article Type-wise Returns (Units)</div>
+          <div class="pie-wrap" style="cursor:pointer;"><canvas id="chartTrendsArtRet"></canvas></div>
+          <div style="font-size:10px;color:#aaa;text-align:center;margin-top:8px;">Click a slice to see size & reasons</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- STYLE TABLE TAB -->
+  <div class="tab-panel" id="tab-styles">
+    <div class="style-subtab-bar" id="styleSubTabBar" style="display:none;">
+      <button class="style-subtab active" data-subtab="all">All</button>
+      <button class="style-subtab" data-subtab="old">Old</button>
+      <button class="style-subtab" data-subtab="new">New</button>
+    </div>
+    <div class="search-wrap" style="padding:12px 32px 0;">
+      <input class="search-input" id="otSearchInput" type="text" placeholder="Search style ID, SKU code, article type…">
+      <button id="repeatDownloadBtn" style="display:none;margin-left:10px;padding:7px 16px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;letter-spacing:0.03em;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:5px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Repeat Plan</button>
+    </div>
+    <div style="padding:6px 32px 0;display:flex;align-items:center;gap:12px;">
+      <div class="row-count" id="rowCount"></div>
+      <div id="skuHint" style="display:none;font-size:10px;color:#aaa;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:5px;padding:3px 10px;">Click any SKU code to see SKU breakdown</div>
+    </div>
+    <div class="table-wrap">
+      <div class="tw"><table id="mainTable"><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGE FILES OVERLAY (ONE-TIME VIEW) -->
+<div class="reasons-overlay" id="manageFilesOverlay">
+  <div class="reasons-modal" style="max-width:560px;position:relative;">
+    <button class="reasons-modal-close" id="manageFilesClose">×</button>
+    <div class="reasons-modal-head">
+      <div class="reasons-modal-title">Manage Files</div>
+      <div class="reasons-modal-sub" id="manageFilesSub"></div>
+    </div>
+    <div class="reasons-modal-body" id="manageFilesBody"></div>
+  </div>
+</div>
+
+<!-- GITHUB LOAD SCREEN -->
+<div id="ghLoadScreen" style="display:none;min-height:calc(100vh - 51px);flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+  <div style="font-size:40px;line-height:1;">📁</div>
+  <div style="font-family:'Playfair Display',serif;font-size:22px;color:#111;">Loading from GitHub</div>
+  <div style="font-size:12px;color:#888;">Fetching CSV files from the data/ folder…</div>
+  <div id="ghLoadErr" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;border-radius:8px;padding:12px 16px;max-width:440px;font-size:12px;color:#7f1d1d;line-height:1.6;"></div>
+</div>
+
+<!-- SKU MODAL -->
+<div class="sku-overlay" id="skuOverlay">
+  <div class="sku-modal">
+    <button class="sku-modal-close" id="skuModalClose">×</button>
+    <button id="skuChartBtn" style="display:none;position:absolute;top:14px;right:52px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:6px;padding:5px 10px;font-size:10px;font-weight:600;color:#7c3aed;cursor:pointer;">📈 Sales Trend</button>
+    <div class="sku-modal-head">
+      <div class="sku-modal-sid" id="smSid"></div>
+      <div class="sku-modal-name" id="smName"></div>
+      <div class="sku-modal-badges" id="smBadges"></div>
+    </div>
+    <div class="sku-modal-kpis" id="smKpis"></div>
+    <div class="sku-modal-body">
+      <div class="sku-modal-section-title" id="smTableTitle"></div>
+      <div class="sku-tbl-wrap"><table class="sku-tbl"><thead id="smThead"></thead><tbody id="smTbody"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- STYLE CHART MODAL -->
+<div class="sku-overlay" id="styleChartOverlay" style="z-index:2500;">
+  <div class="sku-modal" style="max-width:800px;">
+    <button class="sku-modal-close" id="styleChartClose">×</button>
+    <div class="sku-modal-head">
+      <div class="sku-modal-sid" id="styleChartSid"></div>
+      <div class="sku-modal-name" id="styleChartName"></div>
+    </div>
+    <div style="padding:20px 24px 24px;">
+      <div style="position:relative;height:300px;"><canvas id="styleChartCanvas"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- SIZE DRILL-DOWN MODAL -->
+<div class="sku-overlay" id="sizeDrillOverlay" style="z-index:3000;">
+  <div class="sku-modal" style="max-width:500px;">
+    <button class="sku-modal-close" id="sizeDrillClose">×</button>
+    <div class="sku-modal-head">
+      <div class="sku-modal-sid" id="sizeDrillTitle"></div>
+      <div class="sku-modal-name" id="sizeDrillSubtitle" style="font-size:12px;color:#aaa;">Size-wise Units Sold</div>
+    </div>
+    <div style="padding:20px 24px 24px;">
+      <div style="position:relative;height:300px;"><canvas id="sizeDrillCanvas"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ARTICLE TYPE RETURNS DRILL MODAL -->
+<div class="sku-overlay" id="artRetDrillOverlay" style="z-index:3000;">
+  <div class="sku-modal" style="max-width:780px;width:90vw;">
+    <button class="sku-modal-close" id="artRetDrillClose">×</button>
+    <div class="sku-modal-head">
+      <div class="sku-modal-sid" id="artRetDrillTitle"></div>
+      <div class="sku-modal-name" style="font-size:12px;color:#aaa;">Returns Breakdown</div>
+    </div>
+    <div style="padding:20px 24px 24px;display:flex;gap:24px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:600;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Size-wise Returns</div>
+        <div style="font-size:10px;color:#aaa;margin-bottom:8px;">Click a size to see reasons</div>
+        <div style="position:relative;height:280px;"><canvas id="artRetSizeCanvas"></canvas></div>
+      </div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:600;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Return Reasons</div>
+        <div style="flex:1;overflow-y:auto;" id="artRetReasonsBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIZE-LEVEL REASONS POPUP (on top of article drill) -->
+<div class="reasons-overlay" id="sizeReasonsOverlay" style="z-index:3500;">
+  <div class="reasons-modal" style="position:relative;">
+    <button class="reasons-modal-close" id="sizeReasonsClose">×</button>
+    <div class="reasons-modal-head">
+      <div class="reasons-modal-title" id="sizeReasonsTitle">Return Reasons</div>
+      <div class="reasons-modal-sub" id="sizeReasonsSub"></div>
+    </div>
+    <div class="reasons-modal-body" id="sizeReasonsBody"></div>
+  </div>
+</div>
+
+<!-- RETURN REASONS POPUP -->
+<div class="reasons-overlay" id="reasonsOverlay">
+  <div class="reasons-modal" style="position:relative;">
+    <button class="reasons-modal-close" id="reasonsModalClose">×</button>
+    <div class="reasons-modal-head">
+      <div class="reasons-modal-title" id="reasonsModalTitle">Return Reasons</div>
+      <div class="reasons-modal-sub" id="reasonsModalSub"></div>
+    </div>
+    <div class="reasons-modal-body" id="reasonsModalBody"></div>
+  </div>
+</div>
+
+
+<script>
+// ─── SHARED UTILS ────────────────────────────────────────
+function getFY(yyyyMM) {
+  const [y, m] = yyyyMM.split('-').map(Number);
+  const fy = m >= 4 ? y + 1 : y;
+  return 'FY' + String(fy).slice(-2);
+}
+function isMonthComplete(yyyyMM) {
+  const [y, m] = yyyyMM.split('-').map(Number);
+  return new Date() > new Date(y, m, 0);
+}
+function isReturnsFrozen(yyyyMM) {
+  const [y, m] = yyyyMM.split('-').map(Number);
+  const freeze = new Date(y, m, 0);
+  freeze.setDate(freeze.getDate() + 60);
+  return new Date() > freeze;
+}
+function getDaysInMonth(yyyyMM) {
+  const [y, m] = yyyyMM.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+function getFYMonth(yyyyMM) {
+  const m = parseInt(yyyyMM.split('-')[1]);
+  return ((m - 4 + 12) % 12) + 1;
+}
+function getMonthForFY(fy, fyMonth) {
+  const fyYearEnd = 2000 + parseInt(fy.slice(2));
+  const calYear = fyMonth <= 9 ? fyYearEnd - 1 : fyYearEnd;
+  const calMonth = fyMonth <= 9 ? fyMonth + 3 : fyMonth - 9;
+  return `${calYear}-${String(calMonth).padStart(2,'0')}`;
+}
+function formatMonth(ym) {
+  if (!ym || ym === 'All') return 'All';
+  const [y, mo] = ym.split('-');
+  return `${'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[+mo-1]} ${y}`;
+}
+function parseDateToYYYYMM(d) {
+  if (!d) return null;
+  const s = String(d).trim();
+  let m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) return `${m[1]}-${m[2]}`;
+  m = s.match(/^(\d{4})-(\d{2})-\d{2}/);
+  if (m) return `${m[1]}-${m[2]}`;
+  m = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+  if (m) return `${m[3]}-${m[2]}`;
+  return null;
+}
+function fCatDate(raw) {
+  if (!raw) return '<span class="na">—</span>';
+  const s = String(raw).trim();
+  const m8 = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m8) { const mo='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[+m8[2]-1]; return `<span class="cat-date">${+m8[3]} ${mo} ${m8[1]}</span>`; }
+  const mI = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (mI) { const mo='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[+mI[2]-1]; return `<span class="cat-date">${+mI[3]} ${mo} ${mI[1]}</span>`; }
+  return `<span class="cat-date">${s}</span>`;
+}
+function findRowVal(row, ...candidates) {
+  const keys = Object.keys(row);
+  const kl = keys.map(k => k.trim().toLowerCase());
+  for (const c of candidates) { const i = kl.findIndex(k => k === c.toLowerCase()); if (i !== -1) return row[keys[i]]; }
+  for (const c of candidates) { const i = kl.findIndex(k => k.includes(c.toLowerCase())); if (i !== -1) return row[keys[i]]; }
+  return null;
+}
+function brandKey(b) {
+  b = (b||'').toLowerCase();
+  if (b.includes('sangria x')) return 'sangriaxfwd';
+  if (b.includes('sangria')) return 'sangria';
+  if (b.includes('ode')) return 'ode';
+  if (b.includes('house of pataudi')) return 'hop';
+  if (b.includes('routes')) return 'routes';
+  if (b.includes('all about you')) return 'aay';
+  if (b.includes('anouk rustic')) return 'anoukrustic';
+  if (b.includes('anouk')) return 'anouk';
+  if (b.includes('dressberry')) return 'dressberry';
+  return 'other';
+}
+function fINR(n) {
+  if (n === null || n === undefined || isNaN(n)) return '<span class="na">—</span>';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function fRetPct(n) {
+  if (n === null || n === undefined || isNaN(n)) return '<span class="na">—</span>';
+  const cls = n >= 40 ? 'ret-high' : n >= 20 ? 'ret-mid' : 'ret-low';
+  return `<span class="${cls}">${n.toFixed(1)}%</span>`;
+}
+
+const BRAND_COLORS = {
+  'Sangria':'#db2777','Sangria X fwd':'#ec4899',
+  'House of Pataudi':'#b45309','Ode by House of Pataudi':'#d97706',
+  'all about you':'#2563eb','Routes by All About You':'#3b82f6',
+  'Anouk':'#ea580c','Anouk Rustic':'#c2510e','DressBerry':'#0891b2'
+};
+const PIE_FALLBACK = ['#818cf8','#34d399','#f59e0b','#f472b6','#60a5fa','#a78bfa','#fb923c','#4ade80','#e879f9','#38bdf8'];
+const TIER_DEFS = [
+  {id:'VF',label:'Very Fast'},{id:'F',label:'Fast'},
+  {id:'M',label:'Medium'},{id:'S',label:'Slow'},{id:'D',label:'Dead'}
+];
+
+// ─── ONE-TIME VIEW STATE ─────────────────────────────────
+const S = {
+  files: [], errors: [],
+  days: null, daysAuto: null, daysManual: null,
+  data: { sales:[], returns:[], inventory:[], itemmaster:[], catalogue:[] },
+  styles: [], skusByStyle: {},
+  activeBrands: new Set(['All']),
+  activeTiers: new Set(['VF','F','M','S','D']),
+  activeCatalogueMonth: 'All',
+  sortKey: 'units_desc', styleSubTab: 'all',
+  hasReturns: false, hasInventory: false, hasCost: false, hasCatalogue: false,
+  invDateLabel: '',
+  charts: {},
+  tierThresholds: { VF:1.5, F:0.7, M:0.3, S:0.001 },
+  costMap: {}, catalogueMap: {}, catalogueMonths: []
+};
+
+function getTier(ros) {
+  if (ros === null || ros === undefined) return 'D';
+  const t = S.tierThresholds;
+  if (ros > t.VF) return 'VF'; if (ros >= t.F) return 'F';
+  if (ros >= t.M) return 'M';  if (ros >= t.S) return 'S';
+  return 'D';
+}
+
+// ─── SELLER / CHANNEL HELPERS ────────────────────────────
+function getSellerFromRows(rows) {
+  const r = rows.find(r => r['seller id'] !== undefined || r['seller_id'] !== undefined);
+  return String(r?.['seller id'] ?? r?.['seller_id'] ?? '').trim();
+}
+function getSellerLabel(id) {
+  if (id==='18724') return 'MDirect';
+  if (id==='30377') return 'SJIT';
+  if (id==='36387') return 'Anouk Rustic';
+  return id ? `Seller ${id}` : 'Unknown';
+}
+
+// ─── FILE DETECTION ──────────────────────────────────────
+function detectType(cols) {
+  const c = cols.map(x => (x||'').trim().toLowerCase());
+  if (c.includes('order release id') && c.includes('seller price') && c.includes('created on')) return 'sales';
+  if (c.includes('return_id') && c.includes('order_created_date')) return 'returns';
+  if (c.includes('inventory count') && c.includes('sellable inventory count')) return 'inventory';
+  if (c.some(col => col.includes('catalogued') || col.includes('catalogue') || (col.includes('listing') && col.includes('date')))) return 'catalogue';
+  if (c.includes('ean') && c.some(col => col.includes('cost'))) return 'itemmaster';
+  return 'unknown';
+}
+function parseCSV(file) {
+  return new Promise(res => {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      complete(r) {
+        const cols = r.meta.fields || [];
+        const type = detectType(cols);
+        res({ name:file.name, type, rows:r.data, rowCount:r.data.length, cols });
+      },
+      error(e) { res({ name:file.name, type:'unknown', rows:[], rowCount:0, cols:[], parseError:e.message }); }
+    });
+  });
+}
+
+// ─── AUTO DAYS ───────────────────────────────────────────
+function extractDaysFromSales(rows) {
+  const ds = new Set();
+  rows.forEach(r => { const d = (r['created on']||'').trim().split(' ')[0]; if (/^\d{4}-\d{2}-\d{2}$/.test(d)) ds.add(d); });
+  return ds.size;
+}
+function detectSalesMonth(rows) {
+  const months = new Set();
+  rows.forEach(r => { const d = (r['created on']||'').trim().split(' ')[0]; if (/^\d{4}-\d{2}-\d{2}$/.test(d)) months.add(d.slice(0,7)); });
+  return months.size === 1 ? [...months][0] : null;
+}
+function detectReturnOrderMonths(rows) {
+  const months = new Set();
+  rows.forEach(r => {
+    const d = findRowVal(r, 'order_created_date', 'order created date');
+    if (!d) return;
+    const ds = String(d).trim().split(' ')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ds)) months.add(ds.slice(0,7));
+  });
+  return [...months].sort();
+}
+function recomputeAuto() {
+  if (S.daysManual) return;
+  const sr = S.files.filter(f => f.type === 'sales').flatMap(f => f.rows);
+  const auto = extractDaysFromSales(sr);
+  S.daysAuto = auto;
+  const note = document.getElementById('daysNote'), lbl = document.getElementById('daysAutoLabel');
+  if (auto > 0) { note.style.display='block'; note.textContent=`Auto-detected ${auto} unique order dates.`; lbl.textContent=`${auto} days detected`; }
+  else { note.style.display='none'; lbl.textContent=''; }
+}
+
+// ─── PROCESS DATA (one-time) ─────────────────────────────
+function processData() {
+  const salesRows=S.data.sales, returnRows=S.data.returns, invRows=S.data.inventory;
+  const costRows=S.data.itemmaster, catRows=S.data.catalogue;
+  S.hasReturns=returnRows.length>0; S.hasInventory=invRows.length>0;
+  S.hasCost=costRows.length>0; S.hasCatalogue=catRows.length>0;
+  if (!S.daysManual) { S.daysAuto=extractDaysFromSales(salesRows); S.days=S.daysAuto||1; }
+  else S.days=S.daysManual;
+  // Store actual date range (YYYY-MM-DD strings) for catalogue-adjusted ROS
+  {const ds=[];salesRows.forEach(r=>{const d=(r['created on']||'').trim().split(' ')[0];if(/^\d{4}-\d{2}-\d{2}$/.test(d))ds.push(d);});ds.sort();S.firstDateStr=ds.length?ds[0]:null;S.lastDateStr=ds.length?ds[ds.length-1]:null;}
+  if (S.hasInventory) { const t=new Date(); S.invDateLabel=`${String(t.getDate()).padStart(2,'0')}-${String(t.getMonth()+1).padStart(2,'0')}-${t.getFullYear()}`; }
+  S.costMap={};
+  if (S.hasCost) {
+    costRows.forEach(r => {
+      const ean=findRowVal(r,'ean'), cp=findRowVal(r,'cost price','cost_price','costprice','unit cost','cost');
+      if (!ean||cp===null||cp===undefined||cp==='') return;
+      const sid=String(ean).trim(), cost=parseFloat(String(cp).replace(/[₹,\s]/g,''));
+      if (sid&&!isNaN(cost)&&cost>0&&!S.costMap[sid]) S.costMap[sid]=cost;
+    });
+  }
+  S.catalogueMap={};
+  S.vanToSku={};
+  S.catMetaMap={};
+  if (S.hasCatalogue) {
+    catRows.forEach(r => {
+      const sid=String(r['style id']||'').trim();
+      const cd=findRowVal(r,'style catalogued date','catalogued date','catalogue date','catalog date','listing date','listed date','go live date');
+      if (sid&&cd&&!S.catalogueMap[sid]) S.catalogueMap[sid]=String(cd).trim();
+      const van=findRowVal(r,'vendor article number','vendor_article_number','van');
+      const sku=findRowVal(r,'seller sku code','seller_sku_code','sku code','sku_code');
+      if(van&&sku){const v=String(van).trim(),s=String(sku).trim();if(v&&s&&!S.vanToSku[v])S.vanToSku[v]=s;}
+      if(sid&&!S.catMetaMap[sid]){
+        const brand=(r['brand']||'').trim();
+        const styleName=(r['style name']||r['product name']||'').trim();
+        const articleType=(r['article type']||'').trim();
+        if(brand) S.catMetaMap[sid]={brand,styleName,articleType};
+      }
+    });
+  }
+  const ms=new Set(); Object.values(S.catalogueMap).forEach(d=>{const m=parseDateToYYYYMM(d);if(m)ms.add(m);}); S.catalogueMonths=[...ms].sort();
+  const salesMap={};
+  salesRows.forEach(r=>{
+    const sid=String(r['style id']||'').trim(); if(!sid) return;
+    const sellerId=String(r['seller id']||r['seller_id']||'').trim();
+    const rawSku=(r['seller sku code']||'').trim();
+    const resolvedSku=sellerId==='30377'?(findRowVal(r,'vendor article number','vendor_article_number','van') ? (S.vanToSku[String(findRowVal(r,'vendor article number','vendor_article_number','van')).trim()]||'') : '') : rawSku;
+    if(!salesMap[sid]) salesMap[sid]={styleId:sid,brand:(r['brand']||'').trim(),styleName:(r['style name']||'').trim(),articleType:(r['article type']||'').trim(),firstSku:resolvedSku,units:0,revenue:0};
+    salesMap[sid].units++; salesMap[sid].revenue+=parseFloat(r['seller price'])||0;
+  });
+  const retMap={};
+  returnRows.forEach(r=>{const sid=String(r['style_id']||'').trim();if(!sid)return;retMap[sid]=(retMap[sid]||0)+1;});
+  const retSkuMap={};
+  returnRows.forEach(r=>{const sku=(r['seller_sku_code']||r['sku_code']||r['seller sku code']||'').trim();if(sku)retSkuMap[sku]=(retSkuMap[sku]||0)+1;});
+  S.retReasonsByStyle={};
+  S.retReasonsBySku={};
+  returnRows.forEach(r=>{
+    const sid=String(r['style_id']||'').trim(); if(!sid) return;
+    const reason=(String(r['return_reason']||r['Return Reason']||r['returnReason']||'').trim())||'RTO';
+    const sku=(r['seller_sku_code']||r['sku_code']||r['seller sku code']||'').trim();
+    if(!S.retReasonsByStyle[sid]) S.retReasonsByStyle[sid]={};
+    S.retReasonsByStyle[sid][reason]=(S.retReasonsByStyle[sid][reason]||0)+1;
+    if(sku){
+      if(!S.retReasonsBySku[sku]) S.retReasonsBySku[sku]={};
+      S.retReasonsBySku[sku][reason]=(S.retReasonsBySku[sku][reason]||0)+1;
+    }
+  });
+  const invMap={};
+  invRows.forEach(r=>{const sid=String(r['style id']||'').trim();if(!sid)return;invMap[sid]=(invMap[sid]||0)+(parseInt(r['inventory count'])||0);});
+  // Build per-SKU inventory map (try to match by seller sku code in inventory rows)
+  const invSkuMap={};
+  if(S.hasInventory){
+    invRows.forEach(r=>{
+      const skuCode=(r['seller sku code']||r['sku code']||r['seller_sku_code']||'').trim();
+      if(skuCode) invSkuMap[skuCode]=(invSkuMap[skuCode]||0)+(parseInt(r['inventory count'])||0);
+    });
+  }
+  S.skusByStyle={};
+  salesRows.forEach(r=>{
+    const sid=String(r['style id']||'').trim(); if(!sid) return;
+    const sellerId=String(r['seller id']||r['seller_id']||'').trim();
+    let sellerSku;
+    if(sellerId==='30377'){
+      const van=findRowVal(r,'vendor article number','vendor_article_number','van');
+      sellerSku=van?(S.vanToSku[String(van).trim()]||''):'';
+    } else {
+      sellerSku=(r['seller sku code']||'').trim();
+    }
+    if(!sellerSku) return;
+    if(!S.skusByStyle[sid]) S.skusByStyle[sid]={};
+    if(!S.skusByStyle[sid][sellerSku]) S.skusByStyle[sid][sellerSku]={sellerSkuCode:sellerSku,units:0,revenue:0,rets:0,inv:null,size:''};
+    S.skusByStyle[sid][sellerSku].units++;
+    S.skusByStyle[sid][sellerSku].revenue+=parseFloat(r['seller price'])||0;
+    if(!S.skusByStyle[sid][sellerSku].size) S.skusByStyle[sid][sellerSku].size=(r['size']||'').trim();
+  });
+  // Assign returns and inventory per SKU
+  Object.keys(S.skusByStyle).forEach(sid=>{
+    Object.values(S.skusByStyle[sid]).forEach(sku=>{
+      sku.rets=retSkuMap[sku.sellerSkuCode]||0;
+      if(S.hasInventory) sku.inv=invSkuMap[sku.sellerSkuCode]!==undefined?invSkuMap[sku.sellerSkuCode]:null;
+    });
+  });
+  const allIds=new Set([...Object.keys(salesMap),...Object.keys(invMap)]);
+  const rows=[]; const days=S.days;
+  allIds.forEach(sid=>{
+    const sale=salesMap[sid]||(S.catMetaMap[sid]?{styleId:sid,...S.catMetaMap[sid],firstSku:'',units:0,revenue:0}:{styleId:sid,brand:'',styleName:'',articleType:'',firstSku:'',units:0,revenue:0});
+    const units=sale.units, revenue=sale.revenue, rets=retMap[sid]||0;
+    const retPct=units>0?(rets/units)*100:null;
+    const catalogueDate=S.hasCatalogue?(S.catalogueMap[sid]||null):null;
+    let effectiveDays=days, isNewListing=false;
+    if(catalogueDate&&S.firstDateStr&&S.lastDateStr){
+      const _MONS={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+      const _raw=String(catalogueDate).trim();
+      let catYMD=null;
+      if(/^\d{4}-\d{2}-\d{2}$/.test(_raw)){catYMD=_raw;}
+      else if(/^\d{8}$/.test(_raw)){catYMD=`${_raw.slice(0,4)}-${_raw.slice(4,6)}-${_raw.slice(6,8)}`;}
+      else{const _m=_raw.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);if(_m){const _mo=_MONS[_m[2].toLowerCase()];if(_mo)catYMD=`${_m[3]}-${_mo}-${_m[1].padStart(2,'0')}`;}}
+      if(catYMD&&catYMD>=S.firstDateStr&&catYMD<=S.lastDateStr){
+        isNewListing=true;
+        const _catUtc=new Date(catYMD+'T00:00:00Z'), _lastUtc=new Date(S.lastDateStr+'T00:00:00Z');
+        effectiveDays=Math.max(1,Math.round((_lastUtc-_catUtc)/86400000)+1);
+      }
+    }
+    const ros=effectiveDays>0?units/effectiveDays:null, tier=getTier(ros);
+    const inv=S.hasInventory?(invMap[sid]!==undefined?invMap[sid]:null):null;
+    const doh=(inv!==null&&ros!==null&&ros>0)?inv/ros:null;
+    const unitCost=S.hasCost?(S.costMap[sid]!==undefined?S.costMap[sid]:null):null;
+    const totalCost=(unitCost!==null&&units>0)?unitCost*units:null;
+    const avgSellerPrice=units>0?revenue/units:null;
+    rows.push({styleId:sid,brand:sale.brand,styleName:sale.styleName,articleType:sale.articleType,firstSku:sale.firstSku,units,revenue,avgSellerPrice,rets,retPct,ros,tier,inv,doh,unitCost,totalCost,catalogueDate,isNewListing});
+  });
+  S.styles=rows;
+}
+
+// ─── CHART HELPER ────────────────────────────────────────
+function destroyChart(id){if(S.charts[id]){S.charts[id].destroy();delete S.charts[id];}}
+function makeChart(id,type,labels,datasets,opts={}){
+  destroyChart(id);
+  const ctx=document.getElementById(id); if(!ctx) return;
+  S.charts[id]=new Chart(ctx.getContext('2d'),{type,data:{labels,datasets},options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:opts.legend||false,position:'right',labels:(()=>{const l={font:{family:'DM Sans',size:10},boxWidth:10,padding:8};if(opts.legend&&(type==='doughnut'||type==='pie')){l.generateLabels=function(chart){const d=chart.data,tot=d.datasets[0].data.reduce((a,b)=>a+(b||0),0);return d.labels.map((lbl,i)=>({text:`${lbl} (${tot>0?((d.datasets[0].data[i]||0)/tot*100).toFixed(1):0}%)`,fillStyle:d.datasets[0].backgroundColor[i],strokeStyle:'#fff',lineWidth:2,index:i,hidden:false}));};}return l;})()}},
+    scales:type==='bar'||type==='line'?{
+      x:{ticks:{font:{family:'DM Mono',size:10},color:'#999',maxRotation:45},grid:{display:false}},
+      y:{ticks:{font:{family:'DM Mono',size:10},color:'#999'},grid:{color:'#f0f0f0'}}
+    }:undefined,...(opts.extra||{})
+  }});
+}
+
+// ─── FILTERED STYLES ─────────────────────────────────────
+function getFilteredStyles() {
+  let rows=S.styles;
+  if(!S.activeBrands.has('All')) rows=rows.filter(r=>S.activeBrands.has(r.brand));
+  rows=rows.filter(r=>S.activeTiers.has(r.tier));
+  if(S.activeCatalogueMonth!=='All') rows=rows.filter(r=>r.catalogueDate&&parseDateToYYYYMM(r.catalogueDate)===S.activeCatalogueMonth);
+  return rows;
+}
+
+// ─── RENDER PIE CHARTS ───────────────────────────────────
+function renderPieCharts(filtered, mode) {
+  // mode: 'onetimeview' or 'db'
+  const brands = [...new Set(filtered.map(r=>r.brand).filter(Boolean))].sort();
+  const bColors = brands.map(b => BRAND_COLORS[b] || PIE_FALLBACK[brands.indexOf(b) % PIE_FALLBACK.length]);
+  // Pie 1: Brand-wise Sales (always)
+  const salesData = brands.map(b => filtered.filter(r=>r.brand===b).reduce((a,r)=>a+r.units,0));
+  makeChart('chartPie1','doughnut',brands,[{data:salesData,backgroundColor:bColors,borderWidth:2,borderColor:'#fff'}],{legend:true});
+
+  if (mode === 'onetimeview') {
+    // Pie 2: Brand-wise Inventory
+    const pie2Card = document.getElementById('pie2Card');
+    if (S.hasInventory) {
+      pie2Card.style.display='';
+      document.getElementById('pie2Title').textContent = 'Brand-wise Inventory';
+      const invData = brands.map(b => filtered.filter(r=>r.brand===b).reduce((a,r)=>a+(r.inv||0),0));
+      makeChart('chartPie2','doughnut',brands,[{data:invData,backgroundColor:bColors,borderWidth:2,borderColor:'#fff'}],{legend:true});
+    } else {
+      pie2Card.style.display='none';
+    }
+  } else {
+    // Pie 2: Brand-wise Returns
+    const pie2Card = document.getElementById('pie2Card');
+    if (S.hasReturns) {
+      pie2Card.style.display='';
+      document.getElementById('pie2Title').textContent = 'Brand-wise Returns';
+      const retData = brands.map(b => filtered.filter(r=>r.brand===b).reduce((a,r)=>a+r.rets,0));
+      makeChart('chartPie2','doughnut',brands,[{data:retData,backgroundColor:bColors,borderWidth:2,borderColor:'#fff'}],{legend:true});
+    } else {
+      pie2Card.style.display='none';
+    }
+  }
+}
+
+// ─── RENDER OVERVIEW ─────────────────────────────────────
+function renderOverview(mode='onetimeview') {
+  const filtered=getFilteredStyles();
+  const salesRows=S.data.sales.filter(r=>{
+    const brand=(r['brand']||'').trim(), sid=String(r['style id']||'').trim();
+    if(!S.activeBrands.has('All')&&!S.activeBrands.has(brand)) return false;
+    const style=S.styles.find(s=>s.styleId===sid);
+    if(style&&!S.activeTiers.has(style.tier)) return false;
+    return true;
+  });
+  const totalUnits=filtered.reduce((a,r)=>a+r.units,0);
+  const totalRev=filtered.reduce((a,r)=>a+r.revenue,0);
+  const totalRets=filtered.reduce((a,r)=>a+r.rets,0);
+  const retPct=totalUnits>0?(totalRets/totalUnits)*100:0;
+  const totalInv=S.hasInventory?filtered.reduce((a,r)=>a+(r.inv||0),0):null;
+  const totalCOGS=S.hasCost?filtered.reduce((a,r)=>a+(r.totalCost||0),0):null;
+  const grossMargin=(totalCOGS!==null&&totalRev>0)?((totalRev-totalCOGS)/totalRev)*100:null;
+  let cataloguedCount=null, catKpiLabel='Catalogued Styles';
+  if(S.hasCatalogue){
+    const detectedMonth=detectSalesMonth(S.data.sales);
+    if(S.activeCatalogueMonth!=='All'){
+      cataloguedCount=filtered.filter(r=>r.catalogueDate&&parseDateToYYYYMM(r.catalogueDate)===S.activeCatalogueMonth).length;
+      catKpiLabel=`Catalogued in ${formatMonth(S.activeCatalogueMonth)}`;
+    } else if(detectedMonth){
+      cataloguedCount=filtered.filter(r=>r.catalogueDate&&parseDateToYYYYMM(r.catalogueDate)===detectedMonth).length;
+      catKpiLabel=`Catalogued in ${formatMonth(detectedMonth)}`;
+    } else {
+      cataloguedCount=filtered.filter(r=>r.catalogueDate).length;
+    }
+  }
+  let kh=`
+    <div class="kpi-card c-indigo"><div class="kpi-val">${totalUnits.toLocaleString('en-IN')}</div><div class="kpi-lbl">Total Units</div></div>
+    <div class="kpi-card c-green"><div class="kpi-val">₹${Math.round(totalRev).toLocaleString('en-IN')}</div><div class="kpi-lbl">Total Revenue</div></div>
+    <div class="kpi-card"><div class="kpi-val">${filtered.length}</div><div class="kpi-lbl">Styles</div></div>
+    <div class="kpi-card c-purple"><div class="kpi-val">${S.days}</div><div class="kpi-lbl">Days${S.daysManual?'':' (auto)'}</div></div>`;
+  if(totalInv!==null) kh+=`<div class="kpi-card c-teal"><div class="kpi-val">${totalInv.toLocaleString('en-IN')}</div><div class="kpi-lbl">Total Inventory</div></div>`;
+  if(S.hasReturns) kh+=`
+    <div class="kpi-card c-amber"><div class="kpi-val">${totalRets.toLocaleString('en-IN')}</div><div class="kpi-lbl">Total Returns</div></div>
+    <div class="kpi-card c-rose"><div class="kpi-val">${retPct.toFixed(1)}%</div><div class="kpi-lbl">Return %</div></div>`;
+  if(S.hasCost&&totalCOGS!==null) kh+=`
+    <div class="kpi-card c-orange"><div class="kpi-val">₹${Math.round(totalCOGS).toLocaleString('en-IN')}</div><div class="kpi-lbl">Working Capital</div></div>
+    ${grossMargin!==null?`<div class="kpi-card c-blue"><div class="kpi-val">${grossMargin.toFixed(1)}%</div><div class="kpi-lbl">Gross Margin</div></div>`:''}`;
+  if(S.hasCatalogue&&cataloguedCount!==null) kh+=`<div class="kpi-card c-teal"><div class="kpi-val">${cataloguedCount.toLocaleString('en-IN')}</div><div class="kpi-lbl">${catKpiLabel}</div></div>`;
+  document.getElementById('kpiStrip').innerHTML=kh;
+
+  renderPieCharts(filtered, mode);
+
+  // Trend charts
+  const allDates=[...new Set(salesRows.map(r=>(r['created on']||'').trim().split(' ')[0]).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+  const _MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if(allDates.length>62){
+    const mMap={};
+    salesRows.forEach(r=>{
+      const d=(r['created on']||'').trim().split(' ')[0];
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;
+      const mo=d.slice(0,7);
+      if(!mMap[mo])mMap[mo]={units:0,revenue:0};
+      mMap[mo].units++;mMap[mo].revenue+=parseFloat(r['seller price'])||0;
+    });
+    const mos=Object.keys(mMap).sort();
+    const lbl=mos.map(m=>{const[y,mo]=m.split('-');return `${_MO[+mo-1]} ${y}`;});
+    makeChart('chartUnits','bar',lbl,[{data:mos.map(m=>mMap[m].units),backgroundColor:'#818cf8',borderRadius:4}]);
+    makeChart('chartRevenue','bar',lbl,[{data:mos.map(m=>Math.round(mMap[m].revenue)),backgroundColor:'#34d399',borderRadius:4}]);
+  } else {
+    const _fd=new Date(allDates[0]+'T00:00:00Z');
+    const wMap={};
+    salesRows.forEach(r=>{
+      const d=(r['created on']||'').trim().split(' ')[0];
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;
+      const wi=Math.floor((new Date(d+'T00:00:00Z')-_fd)/604800000);
+      if(!wMap[wi])wMap[wi]={units:0,revenue:0};
+      wMap[wi].units++;wMap[wi].revenue+=parseFloat(r['seller price'])||0;
+    });
+    const wks=Object.keys(wMap).map(Number).sort((a,b)=>a-b);
+    const lbl=wks.map(wi=>{
+      const s=new Date(_fd.getTime()+wi*604800000),e=new Date(_fd.getTime()+(wi*7+6)*86400000);
+      return `${s.getUTCDate()} ${_MO[s.getUTCMonth()]} – ${e.getUTCDate()} ${_MO[e.getUTCMonth()]}`;
+    });
+    makeChart('chartUnits','line',lbl,[{data:wks.map(wi=>wMap[wi].units),borderColor:'#818cf8',backgroundColor:'rgba(129,140,248,0.1)',tension:0.3,fill:true,pointRadius:2}]);
+    makeChart('chartRevenue','line',lbl,[{data:wks.map(wi=>Math.round(wMap[wi].revenue)),borderColor:'#34d399',backgroundColor:'rgba(52,211,153,0.1)',tension:0.3,fill:true,pointRadius:2}]);
+  }
+  const brands=[...new Set(filtered.map(r=>r.brand).filter(Boolean))].sort();
+  const bColors=brands.map(b=>BRAND_COLORS[b]||'#94a3b8');
+  makeChart('chartBrandUnits','bar',brands,[{data:brands.map(b=>filtered.filter(r=>r.brand===b).reduce((a,r)=>a+r.units,0)),backgroundColor:bColors,borderRadius:4}]);
+  if(S.hasReturns){
+    document.getElementById('retChartTitle').style.display='block';
+    makeChart('chartBrandRet','bar',brands,[{data:brands.map(b=>{const br=filtered.filter(r=>r.brand===b),u=br.reduce((a,r)=>a+r.units,0),rt=br.reduce((a,r)=>a+r.rets,0);return u>0?parseFloat((rt/u*100).toFixed(1)):0;}),backgroundColor:bColors.map(c=>c+'99'),borderRadius:4}]);
+  }
+  document.getElementById('brandOvGrid').innerHTML=brands.map(b=>{
+    const br=filtered.filter(r=>r.brand===b);
+    const u=br.reduce((a,r)=>a+r.units,0),rev=br.reduce((a,r)=>a+r.revenue,0),rt=br.reduce((a,r)=>a+r.rets,0);
+    const rp=u>0?(rt/u*100).toFixed(1):'—';
+    const cogs=S.hasCost?br.reduce((a,r)=>a+(r.totalCost||0),0):null;
+    const inv=S.hasInventory?br.reduce((a,r)=>a+(r.inv||0),0):null;
+    return `<div class="brand-ov-card">
+      <div class="boc-name">${b}</div>
+      <div class="boc-row"><span>Units</span><span class="boc-val">${u.toLocaleString('en-IN')}</span></div>
+      <div class="boc-row"><span>Revenue</span><span class="boc-val">₹${Math.round(rev).toLocaleString('en-IN')}</span></div>
+      ${S.hasReturns?`<div class="boc-row"><span>Returns</span><span class="boc-val">${rt} (${rp}%)</span></div>`:''}
+      ${cogs!==null?`<div class="boc-row"><span>Working Capital</span><span class="boc-val">₹${Math.round(cogs).toLocaleString('en-IN')}</span></div>`:''}
+      ${inv!==null?`<div class="boc-row"><span>Inventory</span><span class="boc-val">${inv.toLocaleString('en-IN')}</span></div>`:''}
+    </div>`;
+  }).join('');
+  const artMap={};
+  filtered.forEach(r=>{const at=r.articleType||'Other';if(!artMap[at])artMap[at]={units:0,rets:0};artMap[at].units+=r.units;artMap[at].rets+=r.rets;});
+  const arts=Object.keys(artMap).sort((a,b)=>artMap[b].units-artMap[a].units).slice(0,10);
+  const artColors=['#818cf8','#34d399','#f59e0b','#f472b6','#60a5fa','#a78bfa','#fb923c','#4ade80','#e879f9','#38bdf8'];
+  makeChart('chartArticle','bar',arts,[{data:arts.map(a=>artMap[a].units),backgroundColor:artColors,borderRadius:4}]);
+  const artRetCard=document.getElementById('artRetCard'),artTypeGrid=document.getElementById('artTypeGrid');
+  if(S.hasReturns){
+    artRetCard.style.display='';artTypeGrid.classList.add('cols2');
+    makeChart('chartArticleRet','bar',arts,[{data:arts.map(a=>artMap[a].units>0?parseFloat((artMap[a].rets/artMap[a].units*100).toFixed(1)):0),backgroundColor:artColors.map(c=>c+'bb'),borderRadius:4}]);
+  } else {
+    artRetCard.style.display='none';artTypeGrid.classList.remove('cols2');
+  }
+}
+
+// ─── RENDER TABLE ────────────────────────────────────────
+function renderTable(tbodyId='tableBody', theadId='tableHead', rows=null, opts={}) {
+  if (!rows) {
+    rows = getFilteredStyles();
+    if(!opts.isDB){
+      if(S.styleSubTab==='new') rows=rows.filter(r=>r.isNewListing);
+      else if(S.styleSubTab==='old') rows=rows.filter(r=>!r.isNewListing);
+    }
+    const q = (document.getElementById('otSearchInput')?.value||'').trim().toLowerCase();
+    if(q) rows = rows.filter(r=>
+      (r.styleId||'').toLowerCase().includes(q)||
+      (r.firstSku||'').toLowerCase().includes(q)||
+      (r.articleType||'').toLowerCase().includes(q)||
+      (r.brand||'').toLowerCase().includes(q)
+    );
+  }
+  const sk = opts.sortKey || S.sortKey;
+  rows = [...rows].sort((a,b) => {
+    if(sk==='units_desc') return b.units-a.units;
+    if(sk==='units_asc') return a.units-b.units;
+    if(sk==='revenue_desc') return b.revenue-a.revenue;
+    if(sk==='revenue_asc') return a.revenue-b.revenue;
+    if(sk==='ros_desc') return (b.ros||0)-(a.ros||0);
+    if(sk==='ros_asc') return (a.ros||0)-(b.ros||0);
+    if(sk==='returns_desc') return b.rets-a.rets;
+    if(sk==='retpct_desc') return (b.retPct||0)-(a.retPct||0);
+    if(sk==='inv_desc') return (b.inv||0)-(a.inv||0);
+    if(sk==='doh_desc') return (b.doh||0)-(a.doh||0);
+    if(sk==='cost_desc') return (b.totalCost||0)-(a.totalCost||0);
+    if(sk==='cost_asc') return (a.totalCost||0)-(b.totalCost||0);
+    if(sk==='catdate_desc'){const da=parseDateToYYYYMM(a.catalogueDate)||'',db=parseDateToYYYYMM(b.catalogueDate)||'';return db.localeCompare(da);}
+    if(sk==='catdate_asc'){const da=parseDateToYYYYMM(a.catalogueDate)||'',db=parseDateToYYYYMM(b.catalogueDate)||'';return da.localeCompare(db);}
+    return b.units-a.units;
+  });
+  const rowCountEl = document.getElementById(tbodyId==='tableBody'?'rowCount':'dbRowCount');
+  if(rowCountEl) rowCountEl.textContent=`${rows.length} styles`;
+  const showSku = opts.showSku !== false;
+  const isDB = opts.isDB || false;
+  let hCols=['Style ID'];
+  if(showSku) hCols.push('SKU Code');
+  hCols.push('Brand','Article Type','Units','Avg Seller Price','Revenue');
+  if(S.hasCost) hCols.push('Unit Cost');
+  hCols.push('ROS/day','Tier');
+  if(S.hasReturns){hCols.push('Returns','Return%','Top Return Reason');}
+  const showCatDate=!isDB&&S.styleSubTab==='new';
+  if(showCatDate) hCols.push('Catalogue Date');
+  if(S.hasInventory){hCols.push(`Inventory (${S.invDateLabel})`);if(S.days)hCols.push('Days on Hand');}
+  document.getElementById(theadId).innerHTML=`<tr>${hCols.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+  if(!rows.length){
+    document.getElementById(tbodyId).innerHTML=`<tr><td colspan="${hCols.length}" style="text-align:center;padding:32px;color:#aaa;">No styles match the current filters</td></tr>`;
+    return;
+  }
+  const frag=document.createDocumentFragment();
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    const bk=brandKey(r.brand);
+    let cells=[`<td><a class="sid-link" href="https://www.myntra.com/${r.styleId}" target="_blank">${r.styleId}</a></td>`];
+    if(showSku){const skuBtn=r.firstSku?`<button class="sku-drill-btn" data-sid="${r.styleId}">${r.firstSku} ▸</button>`:`<span class="na">—</span>`;cells.push(`<td>${skuBtn}</td>`);}
+    cells.push(
+      `<td><span class="brand-tag bt-${bk}">${r.brand||'—'}</span></td>`,
+      `<td style="color:#555;">${r.articleType||'—'}</td>`,
+      `<td class="mono">${r.units>0?r.units.toLocaleString('en-IN'):'<span class="zero">0</span>'}</td>`
+    );
+    cells.push(`<td class="mono">${r.avgSellerPrice!=null?fINR(r.avgSellerPrice):'<span class="na">—</span>'}</td>`);
+    cells.push(`<td class="mono">${fINR(r.revenue)}</td>`);
+    if(S.hasCost) cells.push(`<td class="mono">${r.unitCost!==null?fINR(r.unitCost):'<span class="na">—</span>'}</td>`);
+    cells.push(`<td class="mono">${r.ros!==null?r.ros.toFixed(3):'<span class="na">—</span>'}</td>`,`<td><span class="tier-badge tb-${r.tier}">${r.tier}</span></td>`);
+    if(S.hasReturns){
+      cells.push(`<td class="mono">${r.rets>0?r.rets:'<span class="zero">0</span>'}</td>`);
+      cells.push(`<td>${fRetPct(r.retPct)}</td>`);
+      const reasonMap=S.retReasonsByStyle[r.styleId]||{};
+      const top=getTopReason(reasonMap);
+      cells.push(top?`<td><button class="ret-reason-btn" data-sid="${r.styleId}" data-mode="style">${top.reason}<span class="ret-reason-pct">${top.pct}%</span></button></td>`:`<td><span class="na">—</span></td>`);
+    }
+    if(showCatDate) cells.push(`<td>${fCatDate(r.catalogueDate)}</td>`);
+    if(S.hasInventory){cells.push(`<td class="mono">${r.inv!==null?r.inv.toLocaleString('en-IN'):'<span class="na">—</span>'}</td>`);if(S.days)cells.push(`<td class="mono">${r.doh!==null?Math.round(r.doh).toLocaleString('en-IN'):'<span class="na">—</span>'}</td>`);}
+    tr.innerHTML=cells.join('');
+    frag.appendChild(tr);
+  });
+  const tbody=document.getElementById(tbodyId);
+  tbody.innerHTML=''; tbody.appendChild(frag);
+}
+
+// ─── CATALOGUE FILTER ────────────────────────────────────
+function renderCatalogueFilter() {
+  const show=S.hasCatalogue&&S.catalogueMonths.length>0;
+  document.getElementById('catSep').style.display=show?'':'none';
+  document.getElementById('catFilterLabel').style.display=show?'':'none';
+  const sel=document.getElementById('catMonthSelect');
+  sel.style.display=show?'':'none';
+  if(show){sel.innerHTML='<option value="All">All Months</option>'+S.catalogueMonths.map(m=>`<option value="${m}">${formatMonth(m)}</option>`).join('');sel.value=S.activeCatalogueMonth;}
+}
+
+// ─── BRAND PILLS ─────────────────────────────────────────
+function renderBrandPills(containerId='brandPills', brands, activeSet, onToggle) {
+  const c=document.getElementById(containerId);
+  c.innerHTML=`<button class="brand-pill active" data-brand="All">All</button>`+brands.map(b=>`<button class="brand-pill bp-${brandKey(b)}" data-brand="${b}">${b}</button>`).join('');
+  c.querySelectorAll('.brand-pill').forEach(btn=>btn.addEventListener('click',()=>{
+    const b=btn.dataset.brand;
+    if(b==='All'){activeSet.clear();activeSet.add('All');}
+    else{activeSet.delete('All');if(activeSet.has(b)){activeSet.delete(b);if(!activeSet.size)activeSet.add('All');}else activeSet.add(b);}
+    c.querySelectorAll('.brand-pill').forEach(p=>p.classList.toggle('active',activeSet.has('All')?p.dataset.brand==='All':activeSet.has(p.dataset.brand)));
+    onToggle();
+  }));
+}
+
+// ─── TIER PILLS ──────────────────────────────────────────
+function renderTierPills(containerId='tierPills', activeTiers, onToggle) {
+  const c=document.getElementById(containerId);
+  c.innerHTML=`<button class="tier-pill active t-ALL" data-tier="All">All</button>`+TIER_DEFS.map(t=>`<button class="tier-pill t-${t.id} active" data-tier="${t.id}">${t.id}</button>`).join('');
+  c.querySelectorAll('.tier-pill').forEach(btn=>btn.addEventListener('click',(e)=>{
+    const tier=btn.dataset.tier;
+    if(tier==='All'){
+      activeTiers.clear();TIER_DEFS.forEach(t=>activeTiers.add(t.id));
+      c.querySelectorAll('.tier-pill').forEach(p=>p.classList.add('active'));
+    } else if(e.ctrlKey||e.metaKey){
+      // Ctrl/Cmd+click: toggle
+      if(activeTiers.has(tier)){activeTiers.delete(tier);btn.classList.remove('active');}
+      else{activeTiers.add(tier);btn.classList.add('active');}
+      c.querySelector('[data-tier="All"]').classList.toggle('active',activeTiers.size===5);
+    } else {
+      // Plain click: select only this tier
+      activeTiers.clear();activeTiers.add(tier);
+      c.querySelectorAll('.tier-pill').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    onToggle();
+  }));
+}
+
+// ─── RETURN REASON HELPERS ───────────────────────────────
+function getTopReason(reasonMap) {
+  const entries=Object.entries(reasonMap||{});
+  if(!entries.length) return null;
+  const total=entries.reduce((a,[,c])=>a+c,0);
+  entries.sort((a,b)=>b[1]-a[1]);
+  const [reason,count]=entries[0];
+  return {reason,count,pct:total>0?Math.round(count/total*100):0,total};
+}
+
+function showReturnReasonsPopup(title, sub, reasonMap) {
+  const entries=Object.entries(reasonMap||{}).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((a,[,c])=>a+c,0);
+  document.getElementById('reasonsModalTitle').textContent=title;
+  document.getElementById('reasonsModalSub').textContent=sub;
+  const maxCount=entries.length?entries[0][1]:1;
+  document.getElementById('reasonsModalBody').innerHTML=entries.length
+    ?entries.map(([reason,count])=>{
+        const pct=total>0?Math.round(count/total*100):0;
+        const barW=Math.round(count/maxCount*100);
+        return `<div class="reasons-row">
+          <div class="reasons-label">${reason}</div>
+          <div class="reasons-bar-wrap"><div class="reasons-bar" style="width:${barW}%"></div></div>
+          <div class="reasons-count">${count}</div>
+          <div class="reasons-pct">${pct}%</div>
+        </div>`;
+      }).join('')
+    :'<div style="color:#aaa;font-size:12px;padding:16px 0;">No return reason data</div>';
+  document.getElementById('reasonsOverlay').classList.add('open');
+}
+
+function _reasonsListHTML(reasonMap){
+  const entries=Object.entries(reasonMap||{}).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length)return'<div style="color:#aaa;font-size:12px;padding:16px 0;">No return reason data</div>';
+  const total=entries.reduce((a,[,c])=>a+c,0);
+  const maxCount=entries[0][1];
+  return entries.map(([reason,count])=>{
+    const pct=total>0?Math.round(count/total*100):0;
+    const barW=Math.round(count/maxCount*100);
+    return`<div class="reasons-row"><div class="reasons-label">${reason}</div><div class="reasons-bar-wrap"><div class="reasons-bar" style="width:${barW}%"></div></div><div class="reasons-count">${count}</div><div class="reasons-pct">${pct}%</div></div>`;
+  }).join('');
+}
+
+function showBrandRetReasons(brand, filteredIds){
+  const brandStyleIds=new Set(S.styles.filter(s=>filteredIds.has(s.styleId)&&(s.brand||'Unknown')===brand).map(s=>s.styleId));
+  const reasonMap={};
+  brandStyleIds.forEach(sid=>{
+    Object.entries(S.retReasonsByStyle[sid]||{}).forEach(([r,c])=>{reasonMap[r]=(reasonMap[r]||0)+c;});
+  });
+  showReturnReasonsPopup(`Return Reasons — ${brand}`,'Brand level',reasonMap);
+}
+
+function showArtRetDrill(artType, filteredIds){
+  const artStyleIds=new Set(S.styles.filter(s=>filteredIds.has(s.styleId)&&(s.articleType||'Unknown')===artType).map(s=>s.styleId));
+  const SIZE_ORDER=['XXS','XS','S','M','L','XL','XXL','XXXL','3XL','4XL'];
+  const PALETTE=['#818cf8','#34d399','#fb923c','#f472b6','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f87171','#2dd4bf'];
+  // Build size map from skusByStyle
+  const sizeMap={};
+  artStyleIds.forEach(sid=>{
+    Object.values(S.skusByStyle[sid]||{}).forEach(sku=>{
+      if(!sku.rets)return;
+      const sz=(sku.size||'').trim()||'Unknown';
+      sizeMap[sz]=(sizeMap[sz]||0)+sku.rets;
+    });
+  });
+  const sLabels=Object.keys(sizeMap).sort((a,b)=>{
+    const ai=SIZE_ORDER.indexOf(a),bi=SIZE_ORDER.indexOf(b);
+    if(ai===-1&&bi===-1)return a.localeCompare(b);
+    if(ai===-1)return 1;if(bi===-1)return -1;
+    return ai-bi;
+  });
+  document.getElementById('artRetDrillTitle').textContent=artType;
+  destroyChart('artRetSizeCanvas');
+  makeChart('artRetSizeCanvas','doughnut',sLabels,
+    [{data:sLabels.map(l=>sizeMap[l]),backgroundColor:PALETTE.slice(0,sLabels.length),borderWidth:2,borderColor:'#fff'}],
+    {legend:true,extra:{onClick:(_e,els,chart)=>{
+      if(!els||!els.length)return;
+      showSizeRetReasons(chart.data.labels[els[0].index],artStyleIds);
+    }}});
+  // Aggregate reasons for this article type
+  const reasonMap={};
+  artStyleIds.forEach(sid=>{
+    Object.entries(S.retReasonsByStyle[sid]||{}).forEach(([r,c])=>{reasonMap[r]=(reasonMap[r]||0)+c;});
+  });
+  document.getElementById('artRetReasonsBody').innerHTML=_reasonsListHTML(reasonMap);
+  document.getElementById('artRetDrillOverlay').classList.add('open');
+}
+
+function showSizeRetReasons(size, artStyleIds){
+  const reasonMap={};
+  artStyleIds.forEach(sid=>{
+    Object.values(S.skusByStyle[sid]||{}).forEach(sku=>{
+      if(!sku.rets)return;
+      const sz=(sku.size||'').trim()||'Unknown';
+      if(sz!==size)return;
+      Object.entries(S.retReasonsBySku[sku.sellerSkuCode]||{}).forEach(([r,c])=>{reasonMap[r]=(reasonMap[r]||0)+c;});
+    });
+  });
+  document.getElementById('sizeReasonsTitle').textContent=`Return Reasons — Size ${size}`;
+  document.getElementById('sizeReasonsSub').textContent='Size level';
+  document.getElementById('sizeReasonsBody').innerHTML=_reasonsListHTML(reasonMap);
+  document.getElementById('sizeReasonsOverlay').classList.add('open');
+}
+
+// ─── SKU MODAL ───────────────────────────────────────────
+function showSkuModal(sid) {
+  const isDB = false;
+  const style = S.styles.find(s=>s.styleId===sid);
+  if(!style) return;
+  document.getElementById('smSid').textContent=`Style ID: ${sid}`;
+  document.getElementById('smName').textContent=style.styleName||sid;
+  const bk=brandKey(style.brand);
+  // Catalogue date KPI chip
+  const catDate = style.catalogueDate || null;
+  const catChip = catDate ? `<span style="font-size:11px;color:#0891b2;background:#f0f9ff;border:1px solid #bae6fd;padding:2px 10px;border-radius:12px;">🗓 Catalogued: ${fCatDate(catDate).replace(/<[^>]*>/g,'')}</span>` : '';
+  document.getElementById('smBadges').innerHTML=`<span class="brand-tag bt-${bk}">${style.brand||'—'}</span><span style="font-size:11px;color:#777;">${style.articleType||''}</span>${catChip}`;
+  // KPI strip
+  let kh=`
+    <div class="smk c-indigo"><div class="smk-val">${style.units.toLocaleString('en-IN')}</div><div class="smk-lbl">Total Units</div></div>
+    <div class="smk c-green"><div class="smk-val">₹${Math.round(style.revenue).toLocaleString('en-IN')}</div><div class="smk-lbl">Revenue</div></div>
+    <div class="smk"><div class="smk-val">${style.ros!==null?style.ros.toFixed(3):'—'}</div><div class="smk-lbl">ROS/day</div></div>
+    <div class="smk"><div class="smk-val"><span class="tier-badge tb-${style.tier}">${style.tier}</span></div><div class="smk-lbl">Tier</div></div>`;
+  if(S.hasReturns){
+    kh+=`<div class="smk c-amber"><div class="smk-val">${style.rets}</div><div class="smk-lbl">Returns</div></div><div class="smk c-rose"><div class="smk-val">${style.retPct!==null?style.retPct.toFixed(1)+'%':'—'}</div><div class="smk-lbl">Return %</div></div>`;
+    const topR=getTopReason(S.retReasonsByStyle[sid]||{});
+    if(topR) kh+=`<div class="smk smk-reason-trigger" data-sid="${sid}" style="cursor:pointer;border-color:#ede9fe;"><div class="smk-val" style="font-size:10px;color:#7c3aed;font-family:'DM Sans',sans-serif;">${topR.reason}</div><div class="smk-lbl">Top Return Reason · ${topR.pct}%</div></div>`;
+  }
+  if(!isDB&&S.hasInventory&&style.inv!==null) kh+=`<div class="smk c-teal"><div class="smk-val">${style.inv.toLocaleString('en-IN')}</div><div class="smk-lbl">Total Inventory</div></div>`;
+  if(S.hasCost&&style.unitCost!==null) kh+=`<div class="smk c-orange"><div class="smk-val">₹${Math.round(style.unitCost).toLocaleString('en-IN')}</div><div class="smk-lbl">Unit Cost</div></div>`;
+  document.getElementById('smKpis').innerHTML=kh;
+
+  // Build SKU rows
+  let skus;
+  if(isDB) {
+    skus = dbSkus; // pre-built from DB aggregated data
+  } else {
+    skus = Object.values(S.skusByStyle[sid]||{});
+  }
+
+  // Columns: Seller SKU | Size | Seller Price | Units | Revenue | Returns | Inventory | ROS/day | Cost Multiplier | DOH | Repeat Qty
+  const hasRets = isDB ? S.hasReturns : S.hasReturns;
+  const hasInv  = !isDB && S.hasInventory;
+  const hasCost = S.hasCost && style.unitCost !== null;
+  const days = S.days || 1;
+  const hasSize = !isDB;
+  const hasRepeat = !isDB && S.hasInventory && style.ros !== null && style.ros >= 2 && style.doh !== null && style.doh <= 30;
+
+  const hasSkuReasons = S.hasReturns;
+  const thCols = ['Seller SKU Code'];
+  if(hasSize) thCols.push('Size');
+  thCols.push('Seller Price','Units Sold','Revenue');
+  if(hasRets) thCols.push('Returns');
+  if(hasInv)  thCols.push('Inventory');
+  thCols.push('ROS/day');
+  if(hasCost) thCols.push('Cost Multiplier');
+  if(hasInv)  thCols.push('DOH');
+  if(hasRepeat) thCols.push('Repeat Qty');
+  if(hasSkuReasons) thCols.push('Top Return Reason');
+
+  document.getElementById('smTableTitle').textContent=`SKU Breakdown · ${skus.length} SKU${skus.length!==1?'s':''}`;
+  document.getElementById('smThead').innerHTML=`<tr>${thCols.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+
+  if(!skus.length){
+    document.getElementById('smTbody').innerHTML=`<tr><td colspan="${thCols.length}" style="text-align:center;padding:24px;color:#aaa;">No SKU data available${isDB?' — re-upload sales to get SKU breakdown':''}</td></tr>`;
+  } else {
+    document.getElementById('smTbody').innerHTML=skus.map(s=>{
+      const avgPrice = s.units>0 ? s.revenue/s.units : 0;
+      const skuRos   = days>0 ? s.units/days : null;
+      const costMult = (hasCost&&style.unitCost&&avgPrice>0) ? avgPrice/style.unitCost : null;
+      const skuDoh   = (hasInv&&s.inv!==null&&skuRos&&skuRos>0) ? s.inv/skuRos : null;
+      const repeatQty = hasRepeat && skuRos ? Math.max(0,Math.round(skuRos*(60-(s.inv!==null?s.inv/skuRos:0)))) : null;
+      let cells=[
+        `<td class="mono" style="font-size:10px;">${s.sellerSkuCode||'—'}</td>`,
+      ];
+      if(hasSize) cells.push(`<td class="mono">${s.size||'<span class="na">—</span>'}</td>`);
+      cells.push(
+        `<td class="mono">${avgPrice>0?'₹'+Math.round(avgPrice).toLocaleString('en-IN'):'<span class="na">—</span>'}</td>`,
+        `<td class="mono">${s.units>0?s.units.toLocaleString('en-IN'):'<span class="zero">0</span>'}</td>`,
+        `<td class="mono">${s.revenue>0?'₹'+Math.round(s.revenue).toLocaleString('en-IN'):'<span class="zero">₹0</span>'}</td>`
+      );
+      if(hasRets) cells.push(`<td class="mono">${s.rets>0?s.rets:'<span class="zero">0</span>'}</td>`);
+      if(hasInv)  cells.push(`<td class="mono">${s.inv!==null?s.inv.toLocaleString('en-IN'):'<span class="na">—</span>'}</td>`);
+      cells.push(`<td class="mono">${skuRos!==null?skuRos.toFixed(3):'<span class="na">—</span>'}</td>`);
+      if(hasCost) cells.push(`<td class="mono">${costMult!==null?costMult.toFixed(2)+'×':'<span class="na">—</span>'}</td>`);
+      if(hasInv)  cells.push(`<td class="mono">${skuDoh!==null?Math.round(skuDoh).toLocaleString('en-IN'):'<span class="na">—</span>'}</td>`);
+      if(hasRepeat) cells.push(`<td class="mono" style="color:#7c3aed;font-weight:700;">${repeatQty!==null?repeatQty.toLocaleString('en-IN'):'<span class="na">—</span>'}</td>`);
+      if(hasSkuReasons){
+        const skuReasonMap=S.retReasonsBySku[s.sellerSkuCode]||{};
+        const topSku=getTopReason(skuReasonMap);
+        cells.push(topSku
+          ?`<td><button class="ret-reason-btn" data-sku="${s.sellerSkuCode.replace(/"/g,'&quot;')}">${topSku.reason}<span class="ret-reason-pct">${topSku.pct}%</span></button></td>`
+          :`<td><span class="na">—</span></td>`);
+      }
+      return `<tr>${cells.join('')}</tr>`;
+    }).join('');
+  }
+  const chartBtn=document.getElementById('skuChartBtn');
+  if(!isDB&&S.data.sales.length>0){chartBtn.style.display='block';chartBtn.dataset.sid=sid;}
+  else{chartBtn.style.display='none';}
+  document.getElementById('skuOverlay').classList.add('open');
+}
+
+// ─── SHOW ONE-TIME DASHBOARD ─────────────────────────────
+function showDashboard() {
+  document.getElementById('uploadScreen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  const sc=S.data.sales.length;
+  document.getElementById('dashMeta').innerHTML=`<span>${sc.toLocaleString('en-IN')} sales rows</span> &nbsp;·&nbsp; <span>${S.days} days</span> &nbsp;·&nbsp; <span style="color:#555;">${S.files.filter(f=>f.type!='unknown').length} files</span>`;
+  document.getElementById('topStatus').textContent=`${sc.toLocaleString('en-IN')} sales rows loaded`;
+  document.getElementById('topStatus').classList.add('loaded');
+  document.getElementById('repeatDownloadBtn').style.display=S.hasInventory?'inline-block':'none';
+  S.styleSubTab='all';
+  const _stBar=document.getElementById('styleSubTabBar');
+  _stBar.style.display=S.hasCatalogue?'flex':'none';
+  _stBar.querySelectorAll('.style-subtab').forEach(b=>b.classList.toggle('active',b.dataset.subtab==='all'));
+  const brands=[...new Set(S.styles.map(r=>r.brand).filter(Boolean))].sort();
+  renderBrandPills('brandPills', brands, S.activeBrands, ()=>{renderTable();if(document.getElementById('tab-overview').classList.contains('active'))renderOverview();if(document.getElementById('tab-trends')?.classList.contains('active'))renderTrends();});
+  renderTierPills('tierPills', S.activeTiers, ()=>{renderTable();if(document.getElementById('tab-overview').classList.contains('active'))renderOverview();if(document.getElementById('tab-trends')?.classList.contains('active'))renderTrends();});
+  renderCatalogueFilter();
+  document.getElementById('sortGroup').style.display='none';
+  document.getElementById('sortSep').style.display='none';
+  renderOverview('onetimeview'); renderTable();
+}
+
+// ─── GITHUB DATA LOADING ─────────────────────────────────
+async function loadFromGitHub() {
+  document.getElementById('modeScreen').style.display='none';
+  document.getElementById('ghLoadScreen').style.display='flex';
+  document.getElementById('backToModeBtn').style.display='';
+  document.getElementById('topStatus').textContent='Loading from GitHub…';
+  const errEl=document.getElementById('ghLoadErr');
+  errEl.style.display='none';
+  try {
+    // Auto-detect GitHub username and repo from the Pages URL
+    // GitHub Pages URLs: https://username.github.io/reponame/...
+    const m=location.hostname.match(/^([^.]+)\.github\.io$/);
+    if(!m) throw new Error('This only works when hosted on GitHub Pages (username.github.io/repo).');
+    const user=m[1];
+    const repo=location.pathname.split('/').filter(Boolean)[0];
+    if(!repo) throw new Error('Could not detect repo name from URL.');
+
+    // List all files in the data/ folder via GitHub Contents API (no auth needed for public repos)
+    const apiUrl=`https://api.github.com/repos/${user}/${repo}/contents/data`;
+    const listing=await fetch(apiUrl).then(r=>{
+      if(!r.ok) throw new Error(`GitHub API error ${r.status} — is the repo public and does a data/ folder exist?`);
+      return r.json();
+    });
+    const csvFiles=listing.filter(f=>f.type==='file'&&f.name.toLowerCase().endsWith('.csv'));
+    if(!csvFiles.length) throw new Error('No CSV files found in the data/ folder.');
+
+    const fetched=[];
+    for(const file of csvFiles){
+      const text=await fetch(file.download_url).then(r=>r.text());
+      const parsed=Papa.parse(text,{header:true,skipEmptyLines:true});
+      const type=detectType(parsed);
+      fetched.push({name:file.name,type,rows:parsed.data,rowCount:parsed.data.length});
+    }
+    S.data.sales=fetched.filter(f=>f.type==='sales').flatMap(f=>f.rows);
+    S.data.returns=fetched.filter(f=>f.type==='returns').flatMap(f=>f.rows);
+    S.data.inventory=fetched.filter(f=>f.type==='inventory').flatMap(f=>f.rows);
+    S.data.itemmaster=fetched.filter(f=>f.type==='itemmaster').flatMap(f=>f.rows);
+    S.data.catalogue=fetched.filter(f=>f.type==='catalogue').flatMap(f=>f.rows);
+    S.files=fetched;
+    document.getElementById('ghLoadScreen').style.display='none';
+    processData(); showDashboard();
+  } catch(e) {
+    errEl.textContent='Failed to load: '+e.message;
+    errEl.style.display='block';
+  }
+}
+// ─── FILE HANDLING (one-time) ─────────────────────────────────────────────
+function renderFileList() {
+  const list=document.getElementById('fileList');
+  if(!S.files.length){list.innerHTML='';return;}
+  const labels={sales:'Sales',returns:'Returns',inventory:'Inventory',itemmaster:'Item Master',catalogue:'Listings',unknown:'Unknown'};
+  list.innerHTML=S.files.map((f,i)=>`<div class="file-chip"><span class="fc-type ${f.type}">${labels[f.type]||f.type}</span><span class="fc-name">${f.name}</span><span class="fc-rows">${f.rowCount.toLocaleString('en-IN')} rows</span><button class="fc-remove" data-idx="${i}">✕</button></div>`).join('');
+  list.querySelectorAll('.fc-remove').forEach(btn=>btn.addEventListener('click',()=>{S.files.splice(parseInt(btn.dataset.idx),1);recomputeAuto();renderFileList();validateGo();}));
+}
+function renderErrors() {
+  const box=document.getElementById('errorBox');
+  if(!S.errors.length){box.style.display='none';return;}
+  box.style.display='block';
+  document.getElementById('errorList').innerHTML=S.errors.map(e=>`<div class="err-item">• ${e}</div>`).join('');
+}
+function validateGo(){document.getElementById('goBtn').disabled=!S.files.some(f=>f.type==='sales');}
+async function addFiles(fileList) {
+  const parsed=await Promise.all(Array.from(fileList).map(parseCSV));
+  S.errors=[];
+  parsed.forEach(pf=>{
+    if(pf.parseError){S.errors.push(`"${pf.name}" could not be read.`);return;}
+    if(pf.type==='unknown') S.errors.push(`"${pf.name}" wasn't recognised.`);
+    if(S.files.find(f=>f.name===pf.name)){S.errors.push(`"${pf.name}" already added — skipped.`);return;}
+    S.files.push(pf);
+  });
+  recomputeAuto();renderFileList();renderErrors();validateGo();
+}
+
+// ─── EVENT LISTENERS ─────────────────────────────────────
+
+// Mode selection
+document.getElementById('modeOneTime').addEventListener('click', () => {
+  document.getElementById('modeScreen').style.display='none';
+  document.getElementById('uploadScreen').style.display='flex';
+  document.getElementById('backToModeBtn').style.display='';
+  document.getElementById('topStatus').textContent='Drop your files to get started';
+});
+document.getElementById('modeDatabase').addEventListener('click', () => {
+  loadFromGitHub();
+});
+document.getElementById('backToModeBtn').addEventListener('click', () => {
+  document.getElementById('modeScreen').style.display='block';
+  document.getElementById('uploadScreen').style.display='none';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('ghLoadScreen').style.display='none';
+  document.getElementById('backToModeBtn').style.display='none';
+  document.getElementById('topStatus').textContent='Select a mode to get started';
+  document.getElementById('topStatus').classList.remove('loaded');
+  // Reset one-time state
+  Object.values(S.charts).forEach(c=>c.destroy());
+  Object.assign(S,{files:[],errors:[],days:null,daysAuto:null,daysManual:null,data:{sales:[],returns:[],inventory:[],itemmaster:[],catalogue:[]},styles:[],skusByStyle:{},retReasonsByStyle:{},retReasonsBySku:{},activeBrands:new Set(['All']),activeTiers:new Set(['VF','F','M','S','D']),activeCatalogueMonth:'All',sortKey:'units_desc',hasReturns:false,hasInventory:false,hasCost:false,hasCatalogue:false,invDateLabel:'',charts:{},costMap:{},catalogueMap:{},catalogueMonths:[]});
+  document.getElementById('daysInput').value='';
+  document.getElementById('daysAutoLabel').textContent='';
+  document.getElementById('daysNote').style.display='none';
+  document.getElementById('fileList').innerHTML='';
+  document.getElementById('errorBox').style.display='none';
+  document.getElementById('goBtn').disabled=true;
+});
+
+// One-time drag-drop + file input
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');addFiles(e.dataTransfer.files);});
+document.getElementById('fileInput').addEventListener('change',e=>{addFiles(e.target.files);e.target.value='';});
+
+// Build dashboard button
+document.getElementById('goBtn').addEventListener('click',()=>{
+  S.data.sales=S.files.filter(f=>f.type==='sales').flatMap(f=>f.rows);
+  S.data.returns=S.files.filter(f=>f.type==='returns').flatMap(f=>f.rows);
+  S.data.inventory=S.files.filter(f=>f.type==='inventory').flatMap(f=>f.rows);
+  S.data.itemmaster=S.files.filter(f=>f.type==='itemmaster').flatMap(f=>f.rows);
+  S.data.catalogue=S.files.filter(f=>f.type==='catalogue').flatMap(f=>f.rows);
+  const manual=parseInt(document.getElementById('daysInput').value);
+  S.daysManual=manual>0?manual:null;
+  S.tierThresholds={VF:parseFloat(document.getElementById('te-VF').value)||1.5,F:parseFloat(document.getElementById('te-F').value)||0.7,M:parseFloat(document.getElementById('te-M').value)||0.3,S:parseFloat(document.getElementById('te-S').value)||0.001};
+  syncTierInfoBoxes();
+  processData(); showDashboard();
+});
+
+// One-time dashboard reset
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  Object.values(S.charts).forEach(c=>c.destroy());
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('uploadScreen').style.display='flex';
+  document.getElementById('topStatus').textContent='Drop your files to get started';
+  document.getElementById('topStatus').classList.remove('loaded');
+  Object.assign(S,{files:[],errors:[],days:null,daysAuto:null,daysManual:null,data:{sales:[],returns:[],inventory:[],itemmaster:[],catalogue:[]},styles:[],skusByStyle:{},retReasonsByStyle:{},retReasonsBySku:{},activeBrands:new Set(['All']),activeTiers:new Set(['VF','F','M','S','D']),activeCatalogueMonth:'All',sortKey:'units_desc',hasReturns:false,hasInventory:false,hasCost:false,hasCatalogue:false,invDateLabel:'',charts:{},costMap:{},catalogueMap:{},catalogueMonths:[]});
+  document.getElementById('daysInput').value='';document.getElementById('daysAutoLabel').textContent='';document.getElementById('daysNote').style.display='none';document.getElementById('fileList').innerHTML='';document.getElementById('errorBox').style.display='none';document.getElementById('goBtn').disabled=true;
+  document.querySelectorAll('.mtab')[0].click();
+});
+
+// One-time tabs
+document.querySelectorAll('.mtab').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  const tab=btn.dataset.tab;
+  document.getElementById('tab-'+tab).classList.add('active');
+  const isStyles=tab==='styles';
+  document.getElementById('sortGroup').style.display=isStyles?'':'none';
+  document.getElementById('sortSep').style.display=isStyles?'':'none';
+  if(tab==='overview') renderOverview('onetimeview');
+  if(tab==='trends') renderTrends();
+}));
+
+// Sort + catalogue filter (one-time)
+document.getElementById('sortSelect').addEventListener('change',e=>{S.sortKey=e.target.value;renderTable();});
+document.getElementById('catMonthSelect').addEventListener('change',e=>{S.activeCatalogueMonth=e.target.value;renderTable();if(document.getElementById('tab-overview').classList.contains('active'))renderOverview('onetimeview');});
+document.getElementById('daysInput').addEventListener('input',()=>{const val=document.getElementById('daysInput').value;if(val){document.getElementById('daysAutoLabel').textContent=`${val} days (manual)`;document.getElementById('daysNote').style.display='none';}else recomputeAuto();});
+
+// Tier editor
+document.getElementById('tierEditorToggle').addEventListener('click',()=>{const body=document.getElementById('tierEditorBody'),arrow=document.getElementById('tierToggleArrow');arrow.textContent=body.classList.toggle('open')?'▴':'▾';});
+document.getElementById('tierResetBtn').addEventListener('click',()=>{document.getElementById('te-VF').value=1.5;document.getElementById('te-F').value=0.7;document.getElementById('te-M').value=0.3;document.getElementById('te-S').value=0.001;});
+
+// ─── TIER THRESHOLD HELPERS ──────────────────────────────
+function syncTierInfoBoxes() {
+  const t=S.tierThresholds;
+  const _vfEl=document.getElementById('li-VF');if(_vfEl)_vfEl.textContent=t.VF;
+  const _fEl=document.getElementById('li-F');if(_fEl)_fEl.textContent=t.F;
+  const _mEl=document.getElementById('li-M');if(_mEl)_mEl.textContent=t.M;
+}
+function validateTierInputs(vf,f,m) {
+  if(isNaN(vf)||isNaN(f)||isNaN(m)) return 'All fields must be valid numbers.';
+  if(vf<=0||f<=0||m<=0) return 'All thresholds must be greater than 0.';
+  if(vf<=f) return 'VF must be greater than F.';
+  if(f<=m) return 'F must be greater than M.';
+  return null;
+}
+// Tier info popup — one-time view
+const tierInfoBtn=document.getElementById('tierInfoBtn'),tierInfoBox=document.getElementById('tierInfoBox');
+tierInfoBtn.addEventListener('click',e=>{
+  e.stopPropagation();
+  const vis=tierInfoBox.style.display==='block';
+  if(!vis){document.getElementById('tierInfoView').style.display='';document.getElementById('tierInfoEdit').style.display='none';}
+  tierInfoBox.style.display=vis?'none':'block';
+});
+document.addEventListener('click',e=>{if(!tierInfoBox.contains(e.target)&&e.target!==tierInfoBtn)tierInfoBox.style.display='none';});
+document.getElementById('tierInfoEditBtn').addEventListener('click',()=>{
+  document.getElementById('ti-VF').value=S.tierThresholds.VF;
+  document.getElementById('ti-F').value=S.tierThresholds.F;
+  document.getElementById('ti-M').value=S.tierThresholds.M;
+  document.getElementById('tierInfoEditErr').style.display='none';
+  document.getElementById('tierInfoView').style.display='none';
+  document.getElementById('tierInfoEdit').style.display='';
+});
+document.getElementById('tierInfoCancelBtn').addEventListener('click',()=>{
+  document.getElementById('tierInfoEdit').style.display='none';
+  document.getElementById('tierInfoView').style.display='';
+});
+document.getElementById('tierInfoSaveBtn').addEventListener('click',()=>{
+  const vf=parseFloat(document.getElementById('ti-VF').value);
+  const f=parseFloat(document.getElementById('ti-F').value);
+  const m=parseFloat(document.getElementById('ti-M').value);
+  const err=validateTierInputs(vf,f,m);
+  if(err){document.getElementById('tierInfoEditErr').textContent=err;document.getElementById('tierInfoEditErr').style.display='';return;}
+  S.tierThresholds={VF:vf,F:f,M:m,S:0.001};
+  syncTierInfoBoxes();
+  S.styles.forEach(st=>{st.tier=getTier(st.ros);});
+  tierInfoBox.style.display='none';
+  renderTable();
+  if(document.getElementById('tab-overview').classList.contains('active'))renderOverview('onetimeview');
+});
+
+// ─── MANAGE FILES (ONE-TIME VIEW) ────────────────────────
+function renderManageFilesOverlay() {
+  const labels={sales:'Sales',returns:'Returns',inventory:'Inventory',itemmaster:'Item Master',catalogue:'Listings',unknown:'Unknown'};
+  const validCount=S.files.filter(f=>f.type!=='unknown').length;
+  document.getElementById('manageFilesSub').textContent=`${validCount} file${validCount!==1?'s':''} loaded`;
+  const salesCount=S.files.filter(f=>f.type==='sales').length;
+  const listHtml=S.files.length
+    ?S.files.map((f,i)=>{
+        const canRemove=!(f.type==='sales'&&salesCount===1);
+        return `<div class="file-chip" style="margin-bottom:6px;">
+          <span class="fc-type ${f.type}">${labels[f.type]||f.type}</span>
+          <span class="fc-name">${f.name}</span>
+          <span class="fc-rows">${f.rowCount.toLocaleString('en-IN')} rows</span>
+          ${canRemove?`<button class="fc-remove" data-idx="${i}" title="Remove file">✕</button>`:`<span style="width:22px;display:inline-block;"></span>`}
+        </div>`;
+      }).join('')
+    :'<div style="color:#aaa;font-size:12px;padding:8px 0;">No files loaded.</div>';
+  document.getElementById('manageFilesBody').innerHTML=`
+    <div id="mgrFileList" style="margin-bottom:14px;">${listHtml}</div>
+    <div class="mgr-drop-zone" id="mgrDropZone">
+      <input type="file" class="file-input-hidden" id="mgrFileInput" accept=".csv" multiple>
+      <div style="font-size:12px;color:#888;margin-bottom:10px;">Drop new files here to add them</div>
+      <label for="mgrFileInput" class="browse-btn" style="font-size:11px;padding:7px 18px;cursor:pointer;">Browse files</label>
+    </div>`;
+  document.getElementById('mgrFileList').querySelectorAll('.fc-remove').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      S.files.splice(parseInt(btn.dataset.idx),1);
+      rebuildDashboardFromFiles();
+      renderManageFilesOverlay();
+    });
+  });
+  const mgrDz=document.getElementById('mgrDropZone');
+  mgrDz.addEventListener('dragover',e=>{e.preventDefault();mgrDz.classList.add('drag-over');});
+  mgrDz.addEventListener('dragleave',()=>mgrDz.classList.remove('drag-over'));
+  mgrDz.addEventListener('drop',async e=>{e.preventDefault();mgrDz.classList.remove('drag-over');await addFilesToDashboard(e.dataTransfer.files);});
+  document.getElementById('mgrFileInput').addEventListener('change',async e=>{await addFilesToDashboard(e.target.files);e.target.value='';});
+}
+
+async function addFilesToDashboard(fileList) {
+  const parsed=await Promise.all(Array.from(fileList).map(parseCSV));
+  parsed.forEach(pf=>{
+    if(pf.parseError) return;
+    if(S.files.find(f=>f.name===pf.name)) return;
+    S.files.push(pf);
+  });
+  rebuildDashboardFromFiles();
+  renderManageFilesOverlay();
+}
+
+function rebuildDashboardFromFiles() {
+  S.data.sales=S.files.filter(f=>f.type==='sales').flatMap(f=>f.rows);
+  S.data.returns=S.files.filter(f=>f.type==='returns').flatMap(f=>f.rows);
+  S.data.inventory=S.files.filter(f=>f.type==='inventory').flatMap(f=>f.rows);
+  S.data.itemmaster=S.files.filter(f=>f.type==='itemmaster').flatMap(f=>f.rows);
+  S.data.catalogue=S.files.filter(f=>f.type==='catalogue').flatMap(f=>f.rows);
+  Object.values(S.charts).forEach(c=>c.destroy());
+  S.charts={};
+  processData();
+  showDashboard();
+}
+
+document.getElementById('dashManageFilesBtn').addEventListener('click',()=>{
+  renderManageFilesOverlay();
+  document.getElementById('manageFilesOverlay').classList.add('open');
+});
+document.getElementById('dashAddFilesBtn').addEventListener('click',()=>{
+  renderManageFilesOverlay();
+  document.getElementById('manageFilesOverlay').classList.add('open');
+  document.getElementById('mgrFileInput')?.click();
+});
+document.getElementById('manageFilesClose').addEventListener('click',()=>document.getElementById('manageFilesOverlay').classList.remove('open'));
+document.getElementById('manageFilesOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('manageFilesOverlay'))document.getElementById('manageFilesOverlay').classList.remove('open');});
+
+// SKU modal
+document.getElementById('skuModalClose').addEventListener('click',()=>document.getElementById('skuOverlay').classList.remove('open'));
+document.getElementById('skuOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('skuOverlay'))document.getElementById('skuOverlay').classList.remove('open');});
+document.getElementById('skuChartBtn').addEventListener('click',()=>showStyleChart(document.getElementById('skuChartBtn').dataset.sid));
+document.getElementById('styleChartClose').addEventListener('click',()=>{document.getElementById('styleChartOverlay').classList.remove('open');if(S.charts['styleChart']){S.charts['styleChart'].destroy();delete S.charts['styleChart'];}});
+document.getElementById('styleChartOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('styleChartOverlay')){document.getElementById('styleChartOverlay').classList.remove('open');if(S.charts['styleChart']){S.charts['styleChart'].destroy();delete S.charts['styleChart'];}}});
+// Size drill-down modal
+document.getElementById('sizeDrillClose').addEventListener('click',()=>{document.getElementById('sizeDrillOverlay').classList.remove('open');if(S.charts['sizeDrillCanvas']){S.charts['sizeDrillCanvas'].destroy();delete S.charts['sizeDrillCanvas'];}});
+document.getElementById('sizeDrillOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('sizeDrillOverlay')){document.getElementById('sizeDrillOverlay').classList.remove('open');if(S.charts['sizeDrillCanvas']){S.charts['sizeDrillCanvas'].destroy();delete S.charts['sizeDrillCanvas'];}}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.getElementById('skuOverlay').classList.remove('open');document.getElementById('styleChartOverlay').classList.remove('open');document.getElementById('sizeDrillOverlay').classList.remove('open');document.getElementById('sizeReasonsOverlay').classList.remove('open');document.getElementById('artRetDrillOverlay').classList.remove('open');destroyChart('artRetSizeCanvas');document.getElementById('reasonsOverlay').classList.remove('open');document.getElementById('manageFilesOverlay').classList.remove('open');}});
+// Article type returns drill modal
+document.getElementById('artRetDrillClose').addEventListener('click',()=>{document.getElementById('artRetDrillOverlay').classList.remove('open');destroyChart('artRetSizeCanvas');});
+document.getElementById('artRetDrillOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('artRetDrillOverlay')){document.getElementById('artRetDrillOverlay').classList.remove('open');destroyChart('artRetSizeCanvas');}});
+// Size-level reasons popup
+document.getElementById('sizeReasonsClose').addEventListener('click',()=>document.getElementById('sizeReasonsOverlay').classList.remove('open'));
+document.getElementById('sizeReasonsOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('sizeReasonsOverlay'))document.getElementById('sizeReasonsOverlay').classList.remove('open');});
+// Return reasons popup
+document.getElementById('reasonsModalClose').addEventListener('click',()=>document.getElementById('reasonsOverlay').classList.remove('open'));
+document.getElementById('reasonsOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('reasonsOverlay'))document.getElementById('reasonsOverlay').classList.remove('open');});
+// One-time view: SKU drill + return reason
+document.getElementById('tableBody').addEventListener('click',e=>{
+  const skuBtn=e.target.closest('.sku-drill-btn');if(skuBtn)showSkuModal(skuBtn.dataset.sid,null);
+  const rrBtn=e.target.closest('.ret-reason-btn[data-mode="style"]');if(rrBtn){const sid=rrBtn.dataset.sid;const style=S.styles.find(s=>s.styleId===sid);showReturnReasonsPopup(`Return Reasons — ${sid}`,style?.styleName||sid,S.retReasonsByStyle[sid]||{});}
+});
+// SKU modal: return reason drill (one-time view)
+document.getElementById('smTbody').addEventListener('click',e=>{
+  const btn=e.target.closest('.ret-reason-btn');
+  if(!btn) return;
+  const sku=btn.dataset.sku;
+  showReturnReasonsPopup(`Return Reasons — ${sku}`,'SKU level',S.retReasonsBySku[sku]||{});
+});
+document.getElementById('smKpis').addEventListener('click',e=>{
+  const chip=e.target.closest('.smk-reason-trigger');
+  if(!chip) return;
+  const sid=chip.dataset.sid;
+  const style=S.styles.find(s=>s.styleId===sid);
+  showReturnReasonsPopup(`Return Reasons — ${sid}`,style?.styleName||sid,S.retReasonsByStyle[sid]||{});
+});
+// Search bar
+document.getElementById('otSearchInput')?.addEventListener('input',()=>renderTable());
+
+document.getElementById('repeatDownloadBtn').addEventListener('click',downloadRepeatPlan);
+document.getElementById('styleSubTabBar').querySelectorAll('.style-subtab').forEach(btn=>btn.addEventListener('click',()=>{
+  document.getElementById('styleSubTabBar').querySelectorAll('.style-subtab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  S.styleSubTab=btn.dataset.subtab;
+  renderTable();
+}));
+
+// ─── STYLE SALES TREND CHART ─────────────────────────────
+function showStyleChart(sid){
+  const style=S.styles.find(s=>s.styleId===sid);
+  if(!style)return;
+  document.getElementById('styleChartSid').textContent=`Style ID: ${sid}`;
+  document.getElementById('styleChartName').textContent=style.styleName||sid;
+
+  const rows=S.data.sales.filter(r=>String(r['style id']||'').trim()===sid);
+  const allDates=[...new Set(rows.map(r=>(r['created on']||'').trim().split(' ')[0]).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+
+  let chartType,labels,data;
+  const _MOS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if(allDates.length>62){
+    const mMap={};
+    rows.forEach(r=>{
+      const d=(r['created on']||'').trim().split(' ')[0];
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;
+      const mo=d.slice(0,7);
+      mMap[mo]=(mMap[mo]||0)+1;
+    });
+    const mos=Object.keys(mMap).sort();
+    labels=mos.map(m=>{const[y,mo]=m.split('-');return `${_MOS[+mo-1]} ${y}`;});
+    data=mos.map(m=>mMap[m]);
+    chartType='bar';
+  } else {
+    const _fd=new Date(allDates[0]+'T00:00:00Z');
+    const wMap={};
+    rows.forEach(r=>{
+      const d=(r['created on']||'').trim().split(' ')[0];
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return;
+      const wi=Math.floor((new Date(d+'T00:00:00Z')-_fd)/604800000);
+      wMap[wi]=(wMap[wi]||0)+1;
+    });
+    const wks=Object.keys(wMap).map(Number).sort((a,b)=>a-b);
+    labels=wks.map(wi=>{
+      const s=new Date(_fd.getTime()+wi*604800000),e=new Date(_fd.getTime()+(wi*7+6)*86400000);
+      return `${s.getUTCDate()} ${_MOS[s.getUTCMonth()]} – ${e.getUTCDate()} ${_MOS[e.getUTCMonth()]}`;
+    });
+    data=wks.map(wi=>wMap[wi]);
+    chartType='line';
+  }
+
+  if(S.charts['styleChart']){S.charts['styleChart'].destroy();delete S.charts['styleChart'];}
+  const ctx=document.getElementById('styleChartCanvas').getContext('2d');
+  S.charts['styleChart']=new Chart(ctx,{
+    type:chartType,
+    data:{labels,datasets:[{
+      data,
+      backgroundColor:chartType==='bar'?'#818cf8':'rgba(129,140,248,0.1)',
+      borderColor:'#818cf8',
+      borderRadius:chartType==='bar'?4:undefined,
+      tension:0.3,
+      fill:chartType==='line'?true:undefined,
+      pointRadius:chartType==='line'?2:undefined
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}
+  });
+  document.getElementById('styleChartOverlay').classList.add('open');
+}
+
+// ─── TRENDS TAB ──────────────────────────────────────────
+function renderTrends(){
+  if(!S.data)return;
+  const filtered=getFilteredStyles();
+  const filteredIds=new Set(filtered.map(s=>s.styleId));
+
+  const brandMap={}, artMap={}, brandRetMap={}, artRetMap={};
+  filtered.forEach(s=>{
+    const brand=s.brand||'Unknown', art=s.articleType||'Unknown';
+    brandMap[brand]=(brandMap[brand]||0)+s.units;
+    artMap[art]=(artMap[art]||0)+s.units;
+    brandRetMap[brand]=(brandRetMap[brand]||0)+s.rets;
+    artRetMap[art]=(artRetMap[art]||0)+s.rets;
+  });
+
+  const PALETTE=['#818cf8','#34d399','#fb923c','#f472b6','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f87171','#2dd4bf','#e879f9','#38bdf8'];
+
+  // Sales pies
+  const bLabels=Object.keys(brandMap).sort((a,b)=>brandMap[b]-brandMap[a]);
+  destroyChart('chartTrendsBrand');
+  makeChart('chartTrendsBrand','doughnut',bLabels,
+    [{data:bLabels.map(l=>brandMap[l]),backgroundColor:PALETTE.slice(0,bLabels.length),borderWidth:2,borderColor:'#fff'}],
+    {legend:true});
+
+  const aLabels=Object.keys(artMap).sort((a,b)=>artMap[b]-artMap[a]);
+  destroyChart('chartTrendsArt');
+  makeChart('chartTrendsArt','doughnut',aLabels,
+    [{data:aLabels.map(l=>artMap[l]),backgroundColor:PALETTE.slice(0,aLabels.length),borderWidth:2,borderColor:'#fff'}],
+    {legend:true,extra:{onClick:(_e,els,chart)=>{
+      if(!els||!els.length)return;
+      showSizeDrillDown(chart.data.labels[els[0].index],filteredIds);
+    }}});
+
+  // Returns pies
+  const hasRets=S.hasReturns&&filtered.some(s=>s.rets>0);
+  document.getElementById('trendsRetGrid').style.display=hasRets?'':'none';
+  if(hasRets){
+    const brLabels=Object.keys(brandRetMap).filter(k=>brandRetMap[k]>0).sort((a,b)=>brandRetMap[b]-brandRetMap[a]);
+    destroyChart('chartTrendsBrandRet');
+    makeChart('chartTrendsBrandRet','doughnut',brLabels,
+      [{data:brLabels.map(l=>brandRetMap[l]),backgroundColor:PALETTE.slice(0,brLabels.length),borderWidth:2,borderColor:'#fff'}],
+      {legend:true,extra:{onClick:(_e,els,chart)=>{
+        if(!els||!els.length)return;
+        showBrandRetReasons(chart.data.labels[els[0].index],filteredIds);
+      }}});
+
+    const arLabels=Object.keys(artRetMap).filter(k=>artRetMap[k]>0).sort((a,b)=>artRetMap[b]-artRetMap[a]);
+    destroyChart('chartTrendsArtRet');
+    makeChart('chartTrendsArtRet','doughnut',arLabels,
+      [{data:arLabels.map(l=>artRetMap[l]),backgroundColor:PALETTE.slice(0,arLabels.length),borderWidth:2,borderColor:'#fff'}],
+      {legend:true,extra:{onClick:(_e,els,chart)=>{
+        if(!els||!els.length)return;
+        showArtRetDrill(chart.data.labels[els[0].index],filteredIds);
+      }}});
+  }
+}
+
+function _sizeDrillOpen(artType, subtitle, sizeMap){
+  const SIZE_ORDER=['XXS','XS','S','M','L','XL','XXL','XXXL','3XL','4XL'];
+  const PALETTE=['#818cf8','#34d399','#fb923c','#f472b6','#60a5fa','#a78bfa','#fbbf24','#4ade80','#f87171','#2dd4bf'];
+  const labels=Object.keys(sizeMap).sort((a,b)=>{
+    const ai=SIZE_ORDER.indexOf(a),bi=SIZE_ORDER.indexOf(b);
+    if(ai===-1&&bi===-1)return a.localeCompare(b);
+    if(ai===-1)return 1;if(bi===-1)return -1;
+    return ai-bi;
+  });
+  document.getElementById('sizeDrillTitle').textContent=artType;
+  document.getElementById('sizeDrillSubtitle').textContent=subtitle;
+  destroyChart('sizeDrillCanvas');
+  makeChart('sizeDrillCanvas','doughnut',labels,
+    [{data:labels.map(l=>sizeMap[l]),backgroundColor:PALETTE.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}],
+    {legend:true});
+  document.getElementById('sizeDrillOverlay').classList.add('open');
+}
+
+function showSizeDrillDown(artType, filteredIds){
+  const artStyleIds=new Set(
+    S.styles.filter(s=>filteredIds.has(s.styleId)&&(s.articleType||'Unknown')===artType).map(s=>s.styleId)
+  );
+  const sizeMap={};
+  (S.data.sales||[]).forEach(r=>{
+    const sid=String(r['style id']||'').trim();
+    if(!artStyleIds.has(sid))return;
+    const sz=(r['size']||'').trim()||'Unknown';
+    sizeMap[sz]=(sizeMap[sz]||0)+1;
+  });
+  _sizeDrillOpen(artType,'Size-wise Units Sold',sizeMap);
+}
+
+function showReturnsSizeDrillDown(artType, filteredIds){
+  const artStyleIds=new Set(
+    S.styles.filter(s=>filteredIds.has(s.styleId)&&(s.articleType||'Unknown')===artType).map(s=>s.styleId)
+  );
+  const sizeMap={};
+  artStyleIds.forEach(sid=>{
+    Object.values(S.skusByStyle[sid]||{}).forEach(sku=>{
+      if(!sku.rets)return;
+      const sz=(sku.size||'').trim()||'Unknown';
+      sizeMap[sz]=(sizeMap[sz]||0)+sku.rets;
+    });
+  });
+  _sizeDrillOpen(artType,'Size-wise Returns',sizeMap);
+}
+
+// ─── REPEAT PLAN DOWNLOAD ────────────────────────────────
+function downloadRepeatPlan(){
+  if(typeof XLSX==='undefined'){alert('Excel library not loaded. Check your internet connection.');return;}
+  const SIZE_ORDER=['XXS','XS','S','M','L','XL','XXL','XXXL','3XL','4XL'];
+  const days=S.days||1;
+
+  // Eligible styles: ROS >= 2 AND DoH <= 30
+  const eligible=S.styles.filter(st=>st.ros!==null&&st.ros>=2&&st.doh!==null&&st.doh<=30);
+  if(!eligible.length){alert('No styles meet the repeat criteria (Style ROS ≥ 2 and DoH ≤ 30).');return;}
+
+  // Collect all sizes across eligible styles
+  const sizeSet=new Set();
+  eligible.forEach(st=>{
+    Object.values(S.skusByStyle[st.styleId]||{}).forEach(sku=>{if(sku.size)sizeSet.add(sku.size.trim());});
+  });
+
+  // Sort sizes: known order first, then alphabetical
+  const sizes=[...sizeSet].sort((a,b)=>{
+    const ai=SIZE_ORDER.indexOf(a.toUpperCase());
+    const bi=SIZE_ORDER.indexOf(b.toUpperCase());
+    if(ai!==-1&&bi!==-1)return ai-bi;
+    if(ai!==-1)return -1;
+    if(bi!==-1)return 1;
+    return a.localeCompare(b);
+  });
+
+  // Build Excel rows
+  const excelRows=eligible.map(st=>{
+    const skus=Object.values(S.skusByStyle[st.styleId]||{});
+    const row={'Style ID':st.styleId,'Brand':st.brand||'—','Article Type':st.articleType||'—','First SKU':st.firstSku||'—'};
+    let total=0;
+    sizes.forEach(sz=>{
+      const sku=skus.find(s=>(s.size||'').trim().toUpperCase()===sz.toUpperCase());
+      if(!sku){
+        row[sz]='-';
+      } else {
+        const skuRos=days>0?sku.units/days:0;
+        const inv=sku.inv!==null?sku.inv:0;
+        const skuDoh=skuRos>0?inv/skuRos:0;
+        const qty=Math.max(0,Math.round(skuRos*(60-skuDoh)));
+        row[sz]=qty;
+        total+=qty;
+      }
+    });
+    row['Total Repeat Qty']=total;
+    return row;
+  });
+
+  const ws=XLSX.utils.json_to_sheet(excelRows);
+
+  // Add hyperlinks to Style ID column (column A)
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  for(let r=range.s.r+1;r<=range.e.r;r++){
+    const cellAddr=XLSX.utils.encode_cell({r,c:0});
+    if(ws[cellAddr]) ws[cellAddr].l={Target:`https://www.myntra.com/${ws[cellAddr].v}`};
+  }
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Repeat Plan');
+  XLSX.writeFile(wb,'repeat_plan.xlsx');
+}
+</script>
+</body>
+</html>
