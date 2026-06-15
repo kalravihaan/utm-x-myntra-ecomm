@@ -517,7 +517,7 @@ tbody td{padding:8px 12px;font-size:12px;vertical-align:middle;}
         <div class="mode-icon">🗄️</div>
         <div class="mode-card-title">Database Mode</div>
         <div class="mode-card-desc">Build a persistent database by financial year. View trends, compare FY26 vs FY27, and track monthly performance over time.</div>
-        <div class="mode-card-badge">Firebase powered</div>
+        <div class="mode-card-badge">GitHub powered</div>
       </div>
     </div>
   </div>
@@ -2935,12 +2935,6 @@ document.querySelectorAll('.db-tab').forEach(btn=>btn.addEventListener('click',(
   else if(tab==='db-styles') renderDBTable();
   document.getElementById('dbFilterBar').style.display='flex';
 }));
-
-    document.getElementById('dbFilterBar').style.display='none';
-    manageEl.style.display='block';
-    manageEl.classList.add('active');
-  }
-});
 
 // DB sort
 document.getElementById('dbSortSelect').addEventListener('change',e=>{DB.dbSortKey=e.target.value;renderDBTable();});
