@@ -1715,7 +1715,7 @@ async function loadFromGitHub() {
     for(const file of csvFiles){
       const text=await fetch(file.download_url).then(r=>r.text());
       const parsed=Papa.parse(text,{header:true,skipEmptyLines:true});
-      const type=detectType(parsed);
+      const type=detectType(parsed.meta.fields||[]);
       fetched.push({name:file.name,type,rows:parsed.data,rowCount:parsed.data.length});
     }
     S.data.sales=fetched.filter(f=>f.type==='sales').flatMap(f=>f.rows);
